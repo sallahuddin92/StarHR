@@ -1,0 +1,5 @@
+{
+  "name": "Enterprise HR Portal",
+  "description": "A comprehensive HR management application providing dashboards for payroll, attendance, approvals, and document generation.",
+  "requestFramePermissions": []
+}
