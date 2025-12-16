@@ -6,6 +6,8 @@ import AttendanceInterventionScreen from './screens/AttendanceInterventionScreen
 import PendingApprovalsScreen from './screens/PendingApprovalsScreen';
 import DocumentCenterScreen from './screens/DocumentCenterScreen';
 import EmployeeMasterScreen from './screens/EmployeeMasterScreen';
+import EwaManagerScreen from './screens/EwaManagerScreen';
+import StatutoryConfigScreen from './screens/StatutoryConfigScreen';
 
 type Screen = 
   | 'Dashboard' 
@@ -13,7 +15,9 @@ type Screen =
   | 'Attendance' 
   | 'Approvals' 
   | 'Documents' 
-  | 'EmployeeMaster';
+  | 'EmployeeMaster'
+  | 'EwaManager'
+  | 'StatutoryConfig';
 
 const screens: { id: Screen, name: string }[] = [
   { id: 'Dashboard', name: 'Dashboard' },
@@ -22,10 +26,12 @@ const screens: { id: Screen, name: string }[] = [
   { id: 'Approvals', name: 'Pending Approvals' },
   { id: 'Documents', name: 'Document Center' },
   { id: 'EmployeeMaster', name: 'Employee Master' },
+  { id: 'EwaManager', name: 'EWA Manager' },
+  { id: 'StatutoryConfig', name: 'Statutory Config' },
 ];
 
 const App: React.FC = () => {
-  const [activeScreen, setActiveScreen] = useState<Screen>('Dashboard');
+  const [activeScreen, setActiveScreen] = useState<Screen>('StatutoryConfig');
 
   const renderScreen = () => {
     switch (activeScreen) {
@@ -41,6 +47,10 @@ const App: React.FC = () => {
         return <DocumentCenterScreen />;
       case 'EmployeeMaster':
         return <EmployeeMasterScreen />;
+      case 'EwaManager':
+        return <EwaManagerScreen />;
+      case 'StatutoryConfig':
+        return <StatutoryConfigScreen />;
       default:
         return <DashboardScreen />;
     }
