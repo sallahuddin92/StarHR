@@ -5,14 +5,47 @@
 
 import { Pool, PoolClient, QueryResult } from 'pg';
 
-// Database connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+const {
+  DATABASE_URL,
+  PGHOST,
+  PGPORT,
+  PGUSER,
+  PGPASSWORD,
+  PGDATABASE,
+  PGSSLMODE,
+  PGPOOL_MAX,
+  PGPOOL_IDLE,
+  PGPOOL_TIMEOUT,
+} = process.env;
+
+// Prefer DATABASE_URL; otherwise fall back to discrete env vars.
+const pool = new Pool(
+  DATABASE_URL
+    ? {
+        connectionString: DATABASE_URL,
+        ssl:
+          process.env.NODE_ENV === 'production' || PGSSLMODE === 'require'
+            ? { rejectUnauthorized: false }
+            : false,
+        max: PGPOOL_MAX ? Number(PGPOOL_MAX) : 20,
+        idleTimeoutMillis: PGPOOL_IDLE ? Number(PGPOOL_IDLE) : 30_000,
+        connectionTimeoutMillis: PGPOOL_TIMEOUT ? Number(PGPOOL_TIMEOUT) : 2_000,
+      }
+    : {
+        host: PGHOST || 'localhost',
+        port: PGPORT ? Number(PGPORT) : 5432,
+        user: PGUSER || 'postgres',
+        password: PGPASSWORD || 'postgres',
+        database: PGDATABASE || 'hr_portal',
+        ssl:
+          process.env.NODE_ENV === 'production' || PGSSLMODE === 'require'
+            ? { rejectUnauthorized: false }
+            : false,
+        max: PGPOOL_MAX ? Number(PGPOOL_MAX) : 20,
+        idleTimeoutMillis: PGPOOL_IDLE ? Number(PGPOOL_IDLE) : 30_000,
+        connectionTimeoutMillis: PGPOOL_TIMEOUT ? Number(PGPOOL_TIMEOUT) : 2_000,
+      }
+);
 
 // Pool error handler
 pool.on('error', (err) => {
