@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
-
-const API_BASE = 'http://localhost:3001/api';
+import { api, ApiError } from '../src/lib/api';
 
 const Stepper: React.FC = () => (
     <nav className="w-full mb-12">
@@ -58,34 +57,14 @@ const PayrollCockpitScreen: React.FC = () => {
         setToast(null);
 
         try {
-            const token = localStorage.getItem('authToken');
-            if (!token) {
-                setToast({ message: 'Not authenticated. Please log in.', type: 'error' });
-                setIsLoading(false);
-                return;
-            }
-
-            const response = await fetch(`${API_BASE}/payroll/run-draft`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    basicStartDate,
-                    basicEndDate,
-                    otStartDate,
-                    otEndDate,
-                }),
+            const response = await api.payroll.runDraft({
+                basicStartDate,
+                basicEndDate,
+                otStartDate,
+                otEndDate,
             });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to generate draft payroll');
-            }
-
-            const totalNetPay = data.data.summary.totalNet;
+            const totalNetPay = response.data?.summary.totalNet ?? 0;
             const formattedNet = new Intl.NumberFormat('en-MY', {
                 style: 'currency',
                 currency: 'MYR',
@@ -99,10 +78,9 @@ const PayrollCockpitScreen: React.FC = () => {
             // Auto-hide toast after 5 seconds
             setTimeout(() => setToast(null), 5000);
         } catch (error) {
-            setToast({
-                message: error instanceof Error ? error.message : 'An error occurred',
-                type: 'error',
-            });
+            // ApiError handles 401 redirect automatically
+            const message = error instanceof ApiError ? error.message : 'An error occurred';
+            setToast({ message, type: 'error' });
         } finally {
             setIsLoading(false);
         }

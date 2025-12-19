@@ -17,6 +17,9 @@ import { attendanceRouter } from './routes/attendance';
 import { payrollRouter } from './routes/payroll';
 import { ewaRouter } from './routes/ewa';
 import { employeesRouter } from './routes/employees';
+import { statsRouter } from './routes/stats';
+import { approvalsRouter } from './routes/approvals';
+import { documentsRouter } from './routes/documents';
 import authRouter from './routes/auth';
 import { authenticateToken } from './middleware/auth';
 
@@ -71,6 +74,9 @@ app.use('/api/attendance', authenticateToken, attendanceRouter);
 app.use('/api/payroll', authenticateToken, payrollRouter);
 app.use('/api/ewa', authenticateToken, ewaRouter);
 app.use('/api/employees', authenticateToken, employeesRouter);
+app.use('/api/stats', authenticateToken, statsRouter);
+app.use('/api/approvals', authenticateToken, approvalsRouter);
+app.use('/api/documents', authenticateToken, documentsRouter);
 
 // Health check endpoint
 app.get('/api/health', (_req: Request, res: Response) => {

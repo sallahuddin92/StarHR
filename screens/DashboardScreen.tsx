@@ -1,5 +1,6 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { api, DashboardSummary, ApiError } from '../src/lib/api';
 
 const Sidebar: React.FC = () => (
     <aside className="w-64 bg-slate-sidebar h-full flex-col hidden md:flex transition-all duration-300 ease-in-out border-r border-slate-800">
@@ -107,8 +108,60 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     return <span className={`${baseClasses} bg-green-100 text-green-700`}>Approved</span>;
 };
 
+const LoadingSkeleton: React.FC = () => (
+    <div className="animate-pulse">
+        <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded w-20"></div>
+    </div>
+);
 
 const DashboardScreen: React.FC = () => {
+    const [stats, setStats] = useState<DashboardSummary | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                setLoading(true);
+                const response = await api.stats.getSummary();
+                if (response.success && response.data) {
+                    setStats(response.data);
+                }
+            } catch (err) {
+                const message = err instanceof ApiError ? err.message : 'Failed to load dashboard';
+                setError(message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStats();
+    }, []);
+
+    const formatPayrollDate = (dateStr: string | null) => {
+        if (!dateStr) return '--';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    };
+
+    const formatPayrollDay = (dateStr: string | null) => {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-GB', { weekday: 'short' });
+    };
+
+    const getCutoffText = (cutoffDate: string | null) => {
+        if (!cutoffDate) return 'Processing cutoff: --';
+        const today = new Date();
+        const cutoff = new Date(cutoffDate);
+        const diffDays = Math.ceil((cutoff.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) return 'Processing cutoff: Today';
+        if (diffDays === 1) return 'Processing cutoff: Tomorrow';
+        if (diffDays < 0) return 'Processing cutoff: Passed';
+        return `Processing cutoff: ${diffDays} days`;
+    };
+
     return (
         <div className="font-display bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 h-screen w-full flex">
             <Sidebar />
@@ -123,7 +176,7 @@ const DashboardScreen: React.FC = () => {
                             </div>
                             <div className="text-sm text-slate-500 bg-white dark:bg-slate-800 px-4 py-2 rounded-full shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary text-lg">calendar_today</span>
-                                <span>Today: 24 Oct 2023</span>
+                                <span>Today: {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -134,8 +187,14 @@ const DashboardScreen: React.FC = () => {
                                 <div className="flex flex-col">
                                     <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Total Employees</p>
                                     <div className="flex items-baseline gap-2 mt-2">
-                                        <h3 className="text-4xl font-bold text-slate-900 dark:text-white">124</h3>
-                                        <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">+3 this month</span>
+                                        {loading ? <LoadingSkeleton /> : (
+                                            <>
+                                                <h3 className="text-4xl font-bold text-slate-900 dark:text-white">{stats?.totalEmployees ?? 0}</h3>
+                                                {(stats?.newEmployeesThisMonth ?? 0) > 0 && (
+                                                    <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">+{stats?.newEmployeesThisMonth} this month</span>
+                                                )}
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="w-full bg-slate-100 rounded-full h-1.5 mt-auto">
@@ -147,15 +206,23 @@ const DashboardScreen: React.FC = () => {
                                     <span className="material-symbols-outlined text-6xl text-orange-400">pending_actions</span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Pending Leave</p>
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Pending Actions</p>
                                     <div className="flex items-baseline gap-2 mt-2">
-                                        <h3 className="text-4xl font-bold text-slate-900 dark:text-white">8</h3>
-                                        <span className="text-sm text-slate-400">requests</span>
+                                        {loading ? <LoadingSkeleton /> : (
+                                            <>
+                                                <h3 className="text-4xl font-bold text-slate-900 dark:text-white">{(stats?.pendingAttendance ?? 0) + (stats?.pendingEwa ?? 0)}</h3>
+                                                <span className="text-sm text-slate-400">requests</span>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 mt-auto text-xs text-orange-600 font-medium">
-                                    <span className="material-symbols-outlined text-sm">warning</span>
-                                    Action required
+                                    {((stats?.pendingAttendance ?? 0) + (stats?.pendingEwa ?? 0)) > 0 && (
+                                        <>
+                                            <span className="material-symbols-outlined text-sm">warning</span>
+                                            Action required
+                                        </>
+                                    )}
                                 </div>
                             </div>
                             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group">
@@ -165,12 +232,16 @@ const DashboardScreen: React.FC = () => {
                                 <div className="flex flex-col">
                                     <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Next Payroll</p>
                                     <div className="flex items-baseline gap-2 mt-2">
-                                        <h3 className="text-4xl font-bold text-slate-900 dark:text-white">28 Oct</h3>
-                                        <span className="text-sm text-slate-400">Mon</span>
+                                        {loading ? <LoadingSkeleton /> : (
+                                            <>
+                                                <h3 className="text-4xl font-bold text-slate-900 dark:text-white">{formatPayrollDate(stats?.nextPayrollDate ?? null)}</h3>
+                                                <span className="text-sm text-slate-400">{formatPayrollDay(stats?.nextPayrollDate ?? null)}</span>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 mt-auto text-xs text-slate-500">
-                                    Processing cutoff: Tomorrow
+                                    {getCutoffText(stats?.payrollCutoffDate ?? null)}
                                 </div>
                             </div>
                         </div>

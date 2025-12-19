@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-
-const API_BASE = 'http://localhost:3001/api';
+import { api, ApiError } from '../src/lib/api';
 
 // --- INTERFACES ---
 interface EwaRequest {
@@ -52,18 +51,9 @@ const EwaManagerScreen: React.FC = () => {
     // Fetch pending requests
     const fetchPendingRequests = async () => {
         try {
-            const token = localStorage.getItem('authToken');
-            if (!token) return;
-
-            const response = await fetch(`${API_BASE}/ewa/pending`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                setPendingRequests(data.data);
+            const response = await api.ewa.getPending();
+            if (response.success && response.data) {
+                setPendingRequests(response.data);
             }
         } catch (error) {
             console.error('Failed to fetch pending requests:', error);
@@ -80,17 +70,8 @@ const EwaManagerScreen: React.FC = () => {
     const handleApprove = async (id: string) => {
         setActionLoading(id);
         try {
-            const token = localStorage.getItem('authToken');
-            const response = await fetch(`${API_BASE}/ewa/${id}/approve`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            const data = await response.json();
-            if (data.success) {
+            const response = await api.ewa.approve(id);
+            if (response.success) {
                 setToast({ message: `Request approved and disbursed!`, type: 'success' });
                 // Remove from list
                 setPendingRequests(prev => prev.filter(req => req.id !== id));
@@ -100,10 +81,11 @@ const EwaManagerScreen: React.FC = () => {
                     setTotalDisbursed(prev => prev + approved.requestedAmount);
                 }
             } else {
-                setToast({ message: data.message || 'Failed to approve', type: 'error' });
+                setToast({ message: response.message || 'Failed to approve', type: 'error' });
             }
         } catch (error) {
-            setToast({ message: 'Network error', type: 'error' });
+            const message = error instanceof ApiError ? error.message : 'Network error';
+            setToast({ message, type: 'error' });
         } finally {
             setActionLoading(null);
             setTimeout(() => setToast(null), 3000);
@@ -114,26 +96,17 @@ const EwaManagerScreen: React.FC = () => {
     const handleReject = async (id: string) => {
         setActionLoading(id);
         try {
-            const token = localStorage.getItem('authToken');
-            const response = await fetch(`${API_BASE}/ewa/${id}/reject`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ reason: 'Rejected by manager' }),
-            });
-
-            const data = await response.json();
-            if (data.success) {
+            const response = await api.ewa.reject(id, 'Rejected by manager');
+            if (response.success) {
                 setToast({ message: `Request rejected`, type: 'success' });
                 // Remove from list
                 setPendingRequests(prev => prev.filter(req => req.id !== id));
             } else {
-                setToast({ message: data.message || 'Failed to reject', type: 'error' });
+                setToast({ message: response.message || 'Failed to reject', type: 'error' });
             }
         } catch (error) {
-            setToast({ message: 'Network error', type: 'error' });
+            const message = error instanceof ApiError ? error.message : 'Network error';
+            setToast({ message, type: 'error' });
         } finally {
             setActionLoading(null);
             setTimeout(() => setToast(null), 3000);

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { api, ApiError } from '../src/lib/api';
 
 interface LoginScreenProps {
     onLoginSuccess: () => void;
@@ -18,23 +17,20 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         setLoading(true);
 
         try {
-            const res = await fetch(`${API_BASE}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ identifier, password }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || 'Login failed');
+            // The api.auth.login method handles token storage automatically
+            const response = await api.auth.login({ email: identifier, password });
+            
+            if (response.token) {
+                // Store user info for UI purposes
+                localStorage.setItem('user', JSON.stringify(response.user));
+                onLoginSuccess();
+            } else {
+                throw new Error('Login failed - no token received');
             }
-
-            localStorage.setItem('authToken', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            onLoginSuccess();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err) {
+            const message = err instanceof ApiError ? err.message : 
+                           err instanceof Error ? err.message : 'Login failed';
+            setError(message);
         } finally {
             setLoading(false);
         }

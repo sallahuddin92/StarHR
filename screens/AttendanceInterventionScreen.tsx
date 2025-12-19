@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { api, ApiError } from '../src/lib/api';
 
 type AttendanceStatus = 'NORMAL' | 'MISSING_PUNCH' | 'PENDING_REVIEW' | 'OT_REJECTED';
 
@@ -15,8 +16,6 @@ interface AttendanceRecord {
     initialVerifiedOT: number;
     status: AttendanceStatus;
 }
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 function deriveStatus(rawClockOut: string | null, otRequested: number, otApproved: number): AttendanceStatus {
     if (!rawClockOut) return 'MISSING_PUNCH';
@@ -65,22 +64,8 @@ const AttendanceInterventionScreen: React.FC = () => {
         async function fetchAttendance() {
             try {
                 setLoading(true);
-                const token = localStorage.getItem('authToken');
-                if (!token) {
-                    setError('Not authenticated');
-                    return;
-                }
-
-                const res = await fetch(`${API_BASE}/api/attendance`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-
-                if (!res.ok) {
-                    throw new Error(`Failed to fetch attendance: ${res.status}`);
-                }
-
-                const json = await res.json();
-                const rows = json.data || [];
+                const response = await api.attendance.getAll();
+                const rows = response.data || [];
                 const mapped: AttendanceRecord[] = rows.map((row: any, idx: number) => {
                     const status = deriveStatus(row.raw_clock_out, row.ot_requested_hours || 0, row.ot_approved_hours || 0);
                     const rawIn = formatTime(row.raw_clock_in);
@@ -107,8 +92,9 @@ const AttendanceInterventionScreen: React.FC = () => {
                 const approved = mapped.filter(r => r.status === 'NORMAL').length;
                 setStats({ pending, approved, errors });
 
-            } catch (err: any) {
-                setError(err.message);
+            } catch (err) {
+                const message = err instanceof ApiError ? err.message : 'Failed to fetch attendance';
+                setError(message);
             } finally {
                 setLoading(false);
             }

@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { api, ApiError } from '../src/lib/api';
 
 type EmployeeRow = {
     id: string;
@@ -9,8 +10,6 @@ type EmployeeRow = {
     department: string | null;
     designation: string | null;
 };
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const Header: React.FC = () => (
      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e6e6db] dark:border-b-[#3a392a] px-10 py-3 bg-white dark:bg-[#1a190b]">
@@ -50,22 +49,11 @@ const EmployeeMasterScreen: React.FC = () => {
             setLoading(true);
             setError(null);
             try {
-                const token = localStorage.getItem('authToken');
-                const res = await fetch(`${API_BASE}/api/employees`, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                });
-
-                if (!res.ok) {
-                    throw new Error(`Failed to fetch employees (${res.status})`);
-                }
-
-                const data = await res.json();
-                setEmployees(data.data || []);
+                const response = await api.employees.getAll();
+                setEmployees(response.data || []);
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to fetch employees');
+                const message = err instanceof ApiError ? err.message : 'Failed to fetch employees';
+                setError(message);
             } finally {
                 setLoading(false);
             }
