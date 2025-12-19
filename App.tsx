@@ -1,13 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardScreen from './screens/DashboardScreen';
 import PayrollCockpitScreen from './screens/PayrollCockpitScreen';
 import AttendanceInterventionScreen from './screens/AttendanceInterventionScreen';
 import PendingApprovalsScreen from './screens/PendingApprovalsScreen';
 import DocumentCenterScreen from './screens/DocumentCenterScreen';
 import EmployeeMasterScreen from './screens/EmployeeMasterScreen';
-import EwaManagerScreen from './screens/EwaManagerScreen';
-import StatutoryConfigScreen from './screens/StatutoryConfigScreen';
+import LoginScreen from './screens/LoginScreen';
 
 type Screen = 
   | 'Dashboard' 
@@ -15,9 +14,7 @@ type Screen =
   | 'Attendance' 
   | 'Approvals' 
   | 'Documents' 
-  | 'EmployeeMaster'
-  | 'EwaManager'
-  | 'StatutoryConfig';
+  | 'EmployeeMaster';
 
 const screens: { id: Screen, name: string }[] = [
   { id: 'Dashboard', name: 'Dashboard' },
@@ -26,12 +23,36 @@ const screens: { id: Screen, name: string }[] = [
   { id: 'Approvals', name: 'Pending Approvals' },
   { id: 'Documents', name: 'Document Center' },
   { id: 'EmployeeMaster', name: 'Employee Master' },
-  { id: 'EwaManager', name: 'EWA Manager' },
-  { id: 'StatutoryConfig', name: 'Statutory Config' },
 ];
 
 const App: React.FC = () => {
-  const [activeScreen, setActiveScreen] = useState<Screen>('StatutoryConfig');
+  const [activeScreen, setActiveScreen] = useState<Screen>('EmployeeMaster');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    setIsAuthenticated(!!token);
+    setCheckingAuth(false);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    setIsAuthenticated(false);
+  };
+
+  if (checkingAuth) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background-light dark:bg-background-dark">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
 
   const renderScreen = () => {
     switch (activeScreen) {
@@ -47,10 +68,6 @@ const App: React.FC = () => {
         return <DocumentCenterScreen />;
       case 'EmployeeMaster':
         return <EmployeeMasterScreen />;
-      case 'EwaManager':
-        return <EwaManagerScreen />;
-      case 'StatutoryConfig':
-        return <StatutoryConfigScreen />;
       default:
         return <DashboardScreen />;
     }
@@ -69,6 +86,12 @@ const App: React.FC = () => {
             {screen.name}
           </button>
         ))}
+        <button 
+          onClick={handleLogout}
+          className="px-3 py-1 text-xs rounded-full bg-red-600 hover:bg-red-500 transition-colors ml-4"
+        >
+          Logout
+        </button>
       </nav>
       <div className="flex-grow">
         {renderScreen()}

@@ -1,5 +1,16 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+
+type EmployeeRow = {
+    id: string;
+    employee_id: string;
+    full_name: string;
+    email: string;
+    department: string | null;
+    designation: string | null;
+};
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const Header: React.FC = () => (
      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e6e6db] dark:border-b-[#3a392a] px-10 py-3 bg-white dark:bg-[#1a190b]">
@@ -30,6 +41,39 @@ const Header: React.FC = () => (
 );
 
 const EmployeeMasterScreen: React.FC = () => {
+    const [employees, setEmployees] = useState<EmployeeRow[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchEmployees = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const token = localStorage.getItem('authToken');
+                const res = await fetch(`${API_BASE}/api/employees`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Failed to fetch employees (${res.status})`);
+                }
+
+                const data = await res.json();
+                setEmployees(data.data || []);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to fetch employees');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchEmployees();
+    }, []);
+
     return (
         <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white min-h-screen flex flex-col overflow-x-hidden">
             <Header/>
@@ -66,12 +110,12 @@ const EmployeeMasterScreen: React.FC = () => {
                  <div className="bg-white dark:bg-[#1a190b] rounded-xl border border-[#e6e6db] dark:border-[#3a392a] shadow-sm overflow-hidden flex flex-col">
                     <div className="px-6 py-4 border-b border-[#e6e6db] dark:border-[#3a392a] flex items-center justify-between bg-white dark:bg-[#1a190b]">
                         <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-bold">Import Preview</h3>
-                            <span className="px-2 py-0.5 rounded-full bg-[#f5f5f0] dark:bg-[#2c2b1a] text-xs font-medium text-[#8c8b5f]">Showing 4 records</span>
+                            <h3 className="text-lg font-bold">Employees</h3>
+                            <span className="px-2 py-0.5 rounded-full bg-[#f5f5f0] dark:bg-[#2c2b1a] text-xs font-medium text-[#8c8b5f]">{employees.length} records</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
-                            <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400"><span className="size-2 rounded-full bg-green-500"></span> 3 Valid</span>
-                            <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400 ml-3"><span className="size-2 rounded-full bg-red-500"></span> 1 Error</span>
+                            {loading && <span className="text-[#8c8b5f]">Loading…</span>}
+                            {error && <span className="text-red-500">{error}</span>}
                         </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -81,51 +125,69 @@ const EmployeeMasterScreen: React.FC = () => {
                                     <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#8c8b5f]">Emp ID</th>
                                     <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#8c8b5f]">Employee Name</th>
                                     <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#8c8b5f]">Department</th>
-                                    <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#8c8b5f]">Hierarchy Reporting</th>
-                                    <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#8c8b5f]">Manager ID</th>
-                                    <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#8c8b5f]">Status</th>
+                                    <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#8c8b5f]">Designation</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#e6e6db] dark:divide-[#3a392a]">
-                                {/* Rows Here */}
-                                <tr className="hover:bg-[#f5f5f0] dark:hover:bg-[#2c2b1a] transition-colors">
-                                    <td className="py-4 px-6 text-sm font-medium">EMP-001</td>
-                                    <td className="py-4 px-6"><div className="flex items-center gap-3"><div className="size-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold">SJ</div><div className="flex flex-col"><span className="text-sm font-semibold text-slate-900 dark:text-white">Sarah Jenkins</span><span className="text-xs text-[#8c8b5f]">sarah.j@company.com</span></div></div></td>
-                                    <td className="py-4 px-6 text-sm text-slate-900 dark:text-white">Marketing</td>
-                                    <td className="py-4 px-6 text-sm text-slate-900 dark:text-white"><div className="flex items-center gap-1 text-xs text-[#8c8b5f] flex-wrap"><span>CEO</span><span className="material-symbols-outlined text-[10px] text-primary">chevron_right</span><span>CMO</span><span className="material-symbols-outlined text-[10px] text-primary">chevron_right</span><span className="text-slate-900 dark:text-white font-medium">VP Mktg</span></div></td>
-                                    <td className="py-4 px-6 text-sm text-slate-900 dark:text-white">MGR-882</td>
-                                    <td className="py-4 px-6"><span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Valid</span></td>
-                                </tr>
-                                <tr className="bg-red-50/50 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-l-4 border-l-red-500">
-                                    <td className="py-4 px-6 text-sm font-medium text-red-900 dark:text-red-200">EMP-004</td>
-                                    <td className="py-4 px-6"><div className="flex items-center gap-3"><div className="size-8 rounded-full bg-red-100 flex items-center justify-center text-red-700 text-xs font-bold">MR</div><div className="flex flex-col"><span className="text-sm font-semibold text-red-900 dark:text-red-200">Mike Ross</span><span className="text-xs text-red-700/70 dark:text-red-300/70">mike.r@company.com</span></div></div></td>
-                                    <td className="py-4 px-6 text-sm text-red-900 dark:text-red-200">Sales</td>
-                                    <td className="py-4 px-6 text-sm"><div className="flex items-center gap-1 text-xs text-red-700/70 dark:text-red-300/70 flex-wrap"><span>CEO</span><span className="material-symbols-outlined text-[10px] text-red-400">chevron_right</span><span>VP Sales</span></div></td>
-                                    <td className="py-4 px-6 text-sm"><div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold"><span className="material-symbols-outlined text-lg">error</span><span>Missing ID</span></div></td>
-                                    <td className="py-4 px-6"><span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300">Error</span></td>
-                                </tr>
-                                <tr className="hover:bg-[#f5f5f0] dark:hover:bg-[#2c2b1a] transition-colors">
-                                    <td className="py-4 px-6 text-sm font-medium">EMP-012</td>
-                                    <td className="py-4 px-6"><div className="flex items-center gap-3"><div className="size-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold">JP</div><div className="flex flex-col"><span className="text-sm font-semibold text-slate-900 dark:text-white">Jessica Pearson</span><span className="text-xs text-[#8c8b5f]">j.pearson@company.com</span></div></div></td>
-                                    <td className="py-4 px-6 text-sm text-slate-900 dark:text-white">Legal</td>
-                                    <td className="py-4 px-6 text-sm text-slate-900 dark:text-white"><div className="flex items-center gap-1 text-xs text-[#8c8b5f] flex-wrap"><span>CEO</span><span className="material-symbols-outlined text-[10px] text-primary">chevron_right</span><span className="text-slate-900 dark:text-white font-medium">General Counsel</span></div></td>
-                                    <td className="py-4 px-6 text-sm text-slate-900 dark:text-white">MGR-001</td>
-                                    <td className="py-4 px-6"><span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Valid</span></td>
-                                </tr>
-                                <tr className="hover:bg-[#f5f5f0] dark:hover:bg-[#2c2b1a] transition-colors border-b-0">
-                                    <td className="py-4 px-6 text-sm font-medium">EMP-019</td>
-                                    <td className="py-4 px-6"><div className="flex items-center gap-3"><div className="size-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-700 text-xs font-bold">DL</div><div className="flex flex-col"><span className="text-sm font-semibold text-slate-900 dark:text-white">Donna Lewis</span><span className="text-xs text-[#8c8b5f]">donna.l@company.com</span></div></div></td>
-                                    <td className="py-4 px-6 text-sm text-slate-900 dark:text-white">Operations</td>
-                                    <td className="py-4 px-6 text-sm text-slate-900 dark:text-white"><div className="flex items-center gap-1 text-xs text-[#8c8b5f] flex-wrap"><span>COO</span><span className="material-symbols-outlined text-[10px] text-primary">chevron_right</span><span className="text-slate-900 dark:text-white font-medium">Ops Lead</span></div></td>
-                                    <td className="py-4 px-6 text-sm text-slate-900 dark:text-white">MGR-023</td>
-                                    <td className="py-4 px-6"><span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Valid</span></td>
-                                </tr>
+                                {employees.map((emp) => (
+                                    <tr key={emp.id} className="hover:bg-[#f5f5f0] dark:hover:bg-[#2c2b1a] transition-colors">
+                                        <td className="py-4 px-6 text-sm font-medium">{emp.employee_id}</td>
+                                        <td className="py-4 px-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="size-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold">
+                                                    {emp.full_name.slice(0,2).toUpperCase()}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-semibold text-slate-900 dark:text-white">{emp.full_name}</span>
+                                                    <span className="text-xs text-[#8c8b5f]">{emp.email}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-6 text-sm text-slate-900 dark:text-white">{emp.department || '—'}</td>
+                                        <td className="py-4 px-6 text-sm text-slate-900 dark:text-white">{emp.designation || '—'}</td>
+                                    </tr>
+                                ))}
+                                {employees.length === 0 && !loading && !error && (
+                                    <tr>
+                                        <td colSpan={4} className="py-6 px-6 text-sm text-[#8c8b5f] text-center">No employees found.</td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
                      <div className="p-4 border-t border-[#e6e6db] dark:border-[#3a392a] bg-[#f8f8f5] dark:bg-[#23220f] flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-3 text-sm text-[#8c8b5f] order-2 sm:order-1"><span className="material-symbols-outlined text-lg">info</span><p>Only valid records will be processed. Invalid records must be corrected in the source file and re-uploaded.</p></div>
-                        <div className="flex items-center gap-3 order-1 sm:order-2 w-full sm:w-auto"><button className="px-6 py-2.5 rounded-full text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto">Cancel</button><button className="px-6 py-2.5 rounded-full text-sm font-bold bg-primary text-black hover:bg-[#d6d305] shadow-md transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"><span className="material-symbols-outlined text-lg">check</span>Save Valid Records (3)</button></div>
+                        <div className="flex items-center gap-3 order-1 sm:order-2 w-full sm:w-auto">
+                            <button className="px-6 py-2.5 rounded-full text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto">Cancel</button>
+                            <button
+                              className="px-6 py-2.5 rounded-full text-sm font-bold bg-primary text-black hover:bg-[#d6d305] shadow-md transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
+                              onClick={async () => {
+                                const token = localStorage.getItem('authToken');
+                                const payloads = employees.map((emp) => ({
+                                  employeeId: emp.employee_id,
+                                  fullName: emp.full_name,
+                                  email: emp.email,
+                                  department: emp.department || undefined,
+                                  designation: emp.designation || undefined,
+                                }));
+
+                                for (const body of payloads) {
+                                  await fetch(`${API_BASE}/api/employees`, {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                    },
+                                    body: JSON.stringify(body),
+                                  });
+                                }
+                                alert('Employees saved');
+                              }}
+                            >
+                              <span className="material-symbols-outlined text-lg">check</span>
+                              Save Valid Records
+                            </button>
+                        </div>
                     </div>
                 </div>
             </main>

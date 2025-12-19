@@ -1,10 +1,10 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 type AttendanceStatus = 'NORMAL' | 'MISSING_PUNCH' | 'PENDING_REVIEW' | 'OT_REJECTED';
 
 interface AttendanceRecord {
-    id: number;
+    id: string;
     name: string;
     empId: string;
     avatarUrl: string;
@@ -12,19 +12,33 @@ interface AttendanceRecord {
     rawTime: string;
     sysOT: number;
     verifiedOT: number;
-
-    initialVerifiedOT: number; 
+    initialVerifiedOT: number;
     status: AttendanceStatus;
 }
 
-const initialRecords: AttendanceRecord[] = [
-    { id: 1, name: 'Jane Doe', empId: 'EMP-1024', avatarUrl: 'https://picsum.photos/id/1027/100/100', date: 'Oct 24, 2023', rawTime: '09:00 - 18:00', sysOT: 1.0, verifiedOT: 1.0, initialVerifiedOT: 1.0, status: 'NORMAL' },
-    { id: 2, name: 'John Smith', empId: 'EMP-1045', avatarUrl: 'https://picsum.photos/id/1005/100/100', date: 'Oct 24, 2023', rawTime: '09:00 - --:--', sysOT: 0.0, verifiedOT: 0.0, initialVerifiedOT: 0.0, status: 'MISSING_PUNCH' },
-    { id: 3, name: 'Mike Ross', empId: 'EMP-2201', avatarUrl: 'https://picsum.photos/id/1011/100/100', date: 'Oct 24, 2023', rawTime: '08:30 - 19:00', sysOT: 2.5, verifiedOT: 3.0, initialVerifiedOT: 2.5, status: 'PENDING_REVIEW' },
-    { id: 4, name: 'Sarah Connor', empId: 'EMP-3002', avatarUrl: 'https://picsum.photos/id/1012/100/100', date: 'Oct 24, 2023', rawTime: '09:00 - 18:00', sysOT: 1.0, verifiedOT: 1.0, initialVerifiedOT: 1.0, status: 'NORMAL' },
-    { id: 5, name: 'Kyle Reese', empId: 'EMP-1984', avatarUrl: 'https://picsum.photos/id/1013/100/100', date: 'Oct 24, 2023', rawTime: '09:00 - 19:00', sysOT: 2.0, verifiedOT: 0.0, initialVerifiedOT: 2.0, status: 'OT_REJECTED' },
-    { id: 6, name: 'Emily Blunt', empId: 'EMP-4055', avatarUrl: 'https://picsum.photos/id/1014/100/100', date: 'Oct 24, 2023', rawTime: '09:00 - 18:00', sysOT: 1.0, verifiedOT: 1.0, initialVerifiedOT: 1.0, status: 'NORMAL' },
-];
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+function deriveStatus(rawClockOut: string | null, otRequested: number, otApproved: number): AttendanceStatus {
+    if (!rawClockOut) return 'MISSING_PUNCH';
+    if (otRequested > 0 && otApproved === 0) return 'OT_REJECTED';
+    if (otRequested !== otApproved) return 'PENDING_REVIEW';
+    return 'NORMAL';
+}
+
+function formatTime(isoString: string | null): string {
+    if (!isoString) return '--:--';
+    const d = new Date(isoString);
+    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDate(dateString: string): string {
+    const d = new Date(dateString);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function avatarUrl(seed: number): string {
+    return `https://picsum.photos/id/${1005 + (seed % 30)}/100/100`;
+}
 
 const StatusBadge: React.FC<{ status: AttendanceStatus }> = ({ status }) => {
     switch (status) {
@@ -41,10 +55,69 @@ const StatusBadge: React.FC<{ status: AttendanceStatus }> = ({ status }) => {
 
 
 const AttendanceInterventionScreen: React.FC = () => {
-    const [records, setRecords] = useState<AttendanceRecord[]>(initialRecords);
-    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set([3]));
+    const [records, setRecords] = useState<AttendanceRecord[]>([]);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [stats, setStats] = useState({ pending: 0, approved: 0, errors: 0 });
 
-    const handleSelect = (id: number) => {
+    useEffect(() => {
+        async function fetchAttendance() {
+            try {
+                setLoading(true);
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    setError('Not authenticated');
+                    return;
+                }
+
+                const res = await fetch(`${API_BASE}/api/attendance`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Failed to fetch attendance: ${res.status}`);
+                }
+
+                const json = await res.json();
+                const rows = json.data || [];
+                const mapped: AttendanceRecord[] = rows.map((row: any, idx: number) => {
+                    const status = deriveStatus(row.raw_clock_out, row.ot_requested_hours || 0, row.ot_approved_hours || 0);
+                    const rawIn = formatTime(row.raw_clock_in);
+                    const rawOut = formatTime(row.raw_clock_out);
+                    return {
+                        id: row.id,
+                        name: row.full_name || 'Unknown',
+                        empId: row.emp_code || row.employee_id,
+                        avatarUrl: avatarUrl(idx),
+                        date: formatDate(row.attendance_date),
+                        rawTime: `${rawIn} - ${rawOut}`,
+                        sysOT: row.ot_requested_hours || 0,
+                        verifiedOT: row.ot_approved_hours ?? row.ot_requested_hours ?? 0,
+                        initialVerifiedOT: row.ot_approved_hours ?? row.ot_requested_hours ?? 0,
+                        status,
+                    };
+                });
+
+                setRecords(mapped);
+
+                // Compute stats
+                const pending = mapped.filter(r => r.status === 'PENDING_REVIEW' || r.status === 'MISSING_PUNCH').length;
+                const errors = mapped.filter(r => r.status === 'MISSING_PUNCH').length;
+                const approved = mapped.filter(r => r.status === 'NORMAL').length;
+                setStats({ pending, approved, errors });
+
+            } catch (err: any) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchAttendance();
+    }, []);
+
+    const handleSelect = (id: string) => {
         const newSelectedIds = new Set(selectedIds);
         if (newSelectedIds.has(id)) {
             newSelectedIds.delete(id);
@@ -62,11 +135,39 @@ const AttendanceInterventionScreen: React.FC = () => {
         }
     };
 
-    const handleOtChange = (id: number, value: string) => {
+    const handleOtChange = (id: string, value: string) => {
         setRecords(records.map(rec => rec.id === id ? { ...rec, verifiedOT: parseFloat(value) || 0 } : rec));
     };
     
     const allSelected = useMemo(() => records.length > 0 && selectedIds.size === records.length, [records, selectedIds]);
+
+    if (loading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background-light dark:bg-background-dark">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                    <p className="text-[#8c8b5f]">Loading attendance records...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background-light dark:bg-background-dark">
+                <div className="flex flex-col items-center gap-4 text-center">
+                    <span className="material-symbols-outlined text-red-500 text-5xl">error</span>
+                    <p className="text-red-600 dark:text-red-400 font-medium">{error}</p>
+                    <button 
+                        onClick={() => window.location.reload()} 
+                        className="px-4 py-2 rounded-full bg-primary text-black font-medium hover:bg-[#eae605]"
+                    >
+                        Retry
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-screen w-full flex-col bg-background-light dark:bg-background-dark font-display text-[#181811] dark:text-[#e6e6db] overflow-hidden">
@@ -87,15 +188,15 @@ const AttendanceInterventionScreen: React.FC = () => {
                         <div className="flex gap-4 overflow-x-auto pb-1 md:pb-0">
                             <div className="flex min-w-[140px] flex-col gap-1 rounded-xl p-4 border border-[#e6e6db] dark:border-[#3a3a30] bg-white dark:bg-surface-dark shadow-sm">
                                 <div className="flex items-center justify-between"><p className="text-[#8c8b5f] text-xs font-semibold uppercase tracking-wider">Pending</p><span className="material-symbols-outlined text-amber-500 text-[20px]">pending</span></div>
-                                <p className="text-[#181811] dark:text-white text-2xl font-bold">12</p>
+                                <p className="text-[#181811] dark:text-white text-2xl font-bold">{stats.pending}</p>
                             </div>
                             <div className="flex min-w-[140px] flex-col gap-1 rounded-xl p-4 border border-[#e6e6db] dark:border-[#3a3a30] bg-white dark:bg-surface-dark shadow-sm">
                                 <div className="flex items-center justify-between"><p className="text-[#8c8b5f] text-xs font-semibold uppercase tracking-wider">Auto-Approved</p><span className="material-symbols-outlined text-green-600 text-[20px]">check_circle</span></div>
-                                <p className="text-[#181811] dark:text-white text-2xl font-bold">145</p>
+                                <p className="text-[#181811] dark:text-white text-2xl font-bold">{stats.approved}</p>
                             </div>
                             <div className="flex min-w-[140px] flex-col gap-1 rounded-xl p-4 border border-[#e6e6db] dark:border-[#3a3a30] bg-white dark:bg-surface-dark shadow-sm">
                                 <div className="flex items-center justify-between"><p className="text-[#8c8b5f] text-xs font-semibold uppercase tracking-wider">Errors</p><span className="material-symbols-outlined text-red-500 text-[20px]">error</span></div>
-                                <p className="text-[#181811] dark:text-white text-2xl font-bold">3</p>
+                                <p className="text-[#181811] dark:text-white text-2xl font-bold">{stats.errors}</p>
                             </div>
                         </div>
                     </div>
@@ -179,7 +280,7 @@ const AttendanceInterventionScreen: React.FC = () => {
                         </table>
                     </div>
                      <div className="flex items-center justify-between p-4 border-t border-[#e6e6db] dark:border-[#3a3a30] bg-[#fafaf7] dark:bg-[#23220f] text-sm text-[#8c8b5f]">
-                        <div>Showing 1-6 of 158 records</div>
+                        <div>Showing {records.length} record{records.length !== 1 ? 's' : ''}</div>
                         <div className="flex gap-2"><button className="px-3 py-1 rounded-lg border border-[#e6e6db] dark:border-[#3a3a30] bg-white dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50" disabled>Prev</button><button className="px-3 py-1 rounded-lg border border-[#e6e6db] dark:border-[#3a3a30] bg-white dark:bg-surface-dark hover:bg-gray-50 dark:hover:bg-gray-800">Next</button></div>
                     </div>
                 </div>

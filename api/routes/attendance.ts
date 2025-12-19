@@ -33,6 +33,7 @@ interface AttendanceRecord {
   verified_clock_in: string;
   raw_clock_out: string | null;
   verified_clock_out: string | null;
+  working_hours: number | null;
 }
 
 interface ClockInResponse {
@@ -42,11 +43,60 @@ interface ClockInResponse {
     attendanceId: string;
     workerId: string;
     clockInTime: string;
+    clockOutTime?: string;
+    totalHours?: number;
     isNewEntry: boolean;
   };
   error?: string;
   code?: string;
 }
+
+// ============================================================================
+// GET /api/attendance - List attendance records
+// ============================================================================
+
+attendanceRouter.get('/', async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).user?.tenantId;
+    if (!tenantId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { date, startDate, endDate, limit = 100 } = req.query;
+
+    let whereClause = 'WHERE al.tenant_id = $1';
+    const params: any[] = [tenantId];
+    let idx = 2;
+
+    if (date) {
+      whereClause += ` AND al.attendance_date = $${idx}`;
+      params.push(date);
+      idx++;
+    } else if (startDate && endDate) {
+      whereClause += ` AND al.attendance_date BETWEEN $${idx} AND $${idx + 1}`;
+      params.push(startDate, endDate);
+      idx += 2;
+    }
+
+    params.push(Number(limit));
+
+    const result = await query(
+      `SELECT al.id, al.employee_id, em.employee_id as emp_code, em.full_name,
+              al.attendance_date, al.raw_clock_in, al.verified_clock_in,
+              al.raw_clock_out, al.verified_clock_out, al.working_hours,
+              al.ot_requested_hours, al.ot_approved_hours, al.ot_approval_status
+       FROM attendance_ledger al
+       JOIN employee_master em ON al.employee_id = em.id
+       ${whereClause}
+       ORDER BY al.attendance_date DESC, al.raw_clock_in DESC
+       LIMIT $${idx}`,
+      params
+    );
+
+    return res.json({ success: true, data: result.rows, count: result.rowCount });
+  } catch (err) {
+    console.error('Attendance GET error:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 // ============================================================================
 // POST /api/attendance/clock-in

@@ -9,6 +9,9 @@ import cors from 'cors';
 import { attendanceRouter } from './routes/attendance';
 import { payrollRouter } from './routes/payroll';
 import { ewaRouter } from './routes/ewa';
+import { employeesRouter } from './routes/employees';
+import authRouter from './routes/auth';
+import { authenticateToken } from './middleware/auth';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,10 +26,14 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
-// API Routes
-app.use('/api/attendance', attendanceRouter);
-app.use('/api/payroll', payrollRouter);
-app.use('/api/ewa', ewaRouter);
+// Public Auth Routes
+app.use('/api/auth', authRouter);
+
+// Protected Routes
+app.use('/api/attendance', authenticateToken, attendanceRouter);
+app.use('/api/payroll', authenticateToken, payrollRouter);
+app.use('/api/ewa', authenticateToken, ewaRouter);
+app.use('/api/employees', authenticateToken, employeesRouter);
 
 // Health check endpoint
 app.get('/api/health', (_req: Request, res: Response) => {
