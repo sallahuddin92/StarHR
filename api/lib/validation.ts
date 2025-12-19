@@ -41,7 +41,6 @@ export type ClockInRequest = z.infer<typeof ClockInSchema>;
  * POST /api/payroll/run-draft
  */
 export const RunDraftPayrollSchema = z.object({
-  tenantId: z.string().uuid('Invalid tenant ID format'),
   basicStartDate: z.string().regex(
     /^\d{4}-\d{2}-\d{2}$/,
     'Invalid date format (YYYY-MM-DD required)'
@@ -84,6 +83,36 @@ export const EWARequestSchema = z.object({
 });
 
 export type EWARequestInput = z.infer<typeof EWARequestSchema>;
+
+/**
+ * EWA Approve Schema
+ * PUT /api/ewa/:id/approve
+ */
+export const EWAApproveSchema = z.object({
+  approvedAmount: z.number()
+    .positive('Approved amount must be positive')
+    .max(100000, 'Amount exceeds maximum limit')
+    .optional(), // If not provided, uses requested amount
+  notes: z.string()
+    .max(500, 'Notes cannot exceed 500 characters')
+    .optional(),
+});
+
+export type EWAApproveInput = z.infer<typeof EWAApproveSchema>;
+
+/**
+ * EWA Reject Schema
+ * PUT /api/ewa/:id/reject
+ */
+export const EWARejectSchema = z.object({
+  reason: z.string()
+    .min(5, 'Rejection reason must be at least 5 characters')
+    .max(500, 'Rejection reason cannot exceed 500 characters')
+    .transform(val => val.trim()) // Sanitize whitespace
+    .refine(val => !/<[^>]*>/.test(val), 'HTML tags are not allowed'), // Prevent XSS
+});
+
+export type EWARejectInput = z.infer<typeof EWARejectSchema>;
 
 // ============================================================================
 // VALIDATION HELPER

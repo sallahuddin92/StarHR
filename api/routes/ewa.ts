@@ -1,16 +1,22 @@
 /**
  * EWA (Earned Wage Access) API Routes
  * POST /api/ewa/request
+ * GET /api/ewa/pending
+ * PUT /api/ewa/:id/approve
+ * PUT /api/ewa/:id/reject
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { query, withTransaction } from '../lib/db';
 import { 
   EWARequestSchema, 
   EWARequestInput,
+  EWAApproveSchema,
+  EWARejectSchema,
   validateRequest, 
   formatZodErrors 
 } from '../lib/validation';
+import { AuthenticatedRequest } from '../middleware/auth';
 
 export const ewaRouter = Router();
 
@@ -402,6 +408,260 @@ ewaRouter.get('/history/:employeeId', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Get EWA history error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+    });
+  }
+});
+
+// ============================================================================
+// GET /api/ewa/pending
+// ============================================================================
+
+/**
+ * Get all pending EWA requests for the tenant (for managers to approve)
+ */
+ewaRouter.get('/pending', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    
+    if (!tenantId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized',
+        message: 'Missing tenant information',
+      });
+    }
+
+    // Get pending requests with employee details
+    const result = await query<{
+      id: string;
+      employee_id: string;
+      employee_name: string;
+      department: string;
+      requested_amount: number;
+      safe_limit_snapshot: number;
+      request_date: string;
+      daily_rate: number;
+      days_worked: number;
+      accrued_salary: number;
+    }>(
+      `SELECT 
+        et.id,
+        et.employee_id,
+        em.full_name as employee_name,
+        em.department,
+        et.requested_amount,
+        et.safe_limit_snapshot,
+        et.request_date,
+        COALESCE(sc.daily_rate, sc.basic_salary / 26, 0) as daily_rate,
+        -- Calculate days worked this month
+        (SELECT COUNT(DISTINCT attendance_date) 
+         FROM attendance_ledger al 
+         WHERE al.employee_id = et.employee_id 
+           AND al.attendance_date >= date_trunc('month', CURRENT_DATE)
+           AND al.verified_clock_in IS NOT NULL
+           AND al.verified_clock_out IS NOT NULL) as days_worked,
+        -- Calculate accrued salary
+        COALESCE(sc.daily_rate, sc.basic_salary / 26, 0) * 
+          (SELECT COUNT(DISTINCT attendance_date) 
+           FROM attendance_ledger al 
+           WHERE al.employee_id = et.employee_id 
+             AND al.attendance_date >= date_trunc('month', CURRENT_DATE)
+             AND al.verified_clock_in IS NOT NULL
+             AND al.verified_clock_out IS NOT NULL) as accrued_salary
+       FROM ewa_transactions et
+       JOIN employee_master em ON et.employee_id = em.id
+       LEFT JOIN salary_config sc ON em.id = sc.employee_id AND sc.is_active = true
+       WHERE et.tenant_id = $1 
+         AND et.status = 'pending'
+       ORDER BY et.request_date ASC`,
+      [tenantId]
+    );
+
+    // Transform for frontend
+    const pendingRequests = result.rows.map(row => ({
+      id: row.id,
+      employeeId: row.employee_id,
+      name: row.employee_name,
+      department: row.department || 'General',
+      accruedSalary: Number(row.accrued_salary) || Number(row.safe_limit_snapshot) * 2,
+      safeLimit: Number(row.safe_limit_snapshot),
+      requestedAmount: Number(row.requested_amount),
+      requestDate: row.request_date,
+      daysWorked: Number(row.days_worked),
+    }));
+
+    return res.json({
+      success: true,
+      data: pendingRequests,
+      count: result.rowCount,
+    });
+
+  } catch (error) {
+    console.error('Get pending EWA requests error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+    });
+  }
+});
+
+// ============================================================================
+// PUT /api/ewa/:id/approve
+// ============================================================================
+
+/**
+ * Approve an EWA request - sets status to 'disbursed'
+ */
+ewaRouter.put('/:id/approve', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user?.tenantId;
+    const userId = req.user?.userId;
+
+    if (!tenantId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized',
+        message: 'Missing tenant information',
+      });
+    }
+
+    // Verify the transaction exists and belongs to tenant
+    const existing = await query<{ id: string; status: string; requested_amount: number }>(
+      `SELECT id, status, requested_amount 
+       FROM ewa_transactions 
+       WHERE id = $1 AND tenant_id = $2`,
+      [id, tenantId]
+    );
+
+    if (existing.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'EWA transaction not found',
+      });
+    }
+
+    if (existing.rows[0].status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid Status',
+        message: `Cannot approve transaction with status: ${existing.rows[0].status}`,
+      });
+    }
+
+    // Update to disbursed
+    await query(
+      `UPDATE ewa_transactions 
+       SET status = 'disbursed',
+           approved_amount = requested_amount,
+           approval_date = CURRENT_TIMESTAMP,
+           processing_date = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND tenant_id = $2`,
+      [id, tenantId]
+    );
+
+    return res.json({
+      success: true,
+      message: 'EWA request approved and disbursed',
+      data: {
+        transactionId: id,
+        status: 'disbursed',
+        approvedAmount: existing.rows[0].requested_amount,
+        approvedAt: new Date().toISOString(),
+      },
+    });
+
+  } catch (error) {
+    console.error('Approve EWA request error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+    });
+  }
+});
+
+// ============================================================================
+// PUT /api/ewa/:id/reject
+// ============================================================================
+
+/**
+ * Reject an EWA request
+ */
+ewaRouter.put('/:id/reject', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized',
+        message: 'Missing tenant information',
+      });
+    }
+
+    // Validate request body
+    const validation = validateRequest(EWARejectSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation Error',
+        details: formatZodErrors(validation.errors),
+      });
+    }
+
+    const { reason } = validation.data;
+
+    // Verify the transaction exists and belongs to tenant
+    const existing = await query<{ id: string; status: string }>(
+      `SELECT id, status FROM ewa_transactions WHERE id = $1 AND tenant_id = $2`,
+      [id, tenantId]
+    );
+
+    if (existing.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'EWA transaction not found',
+      });
+    }
+
+    if (existing.rows[0].status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid Status',
+        message: `Cannot reject transaction with status: ${existing.rows[0].status}`,
+      });
+    }
+
+    // Update to rejected
+    await query(
+      `UPDATE ewa_transactions 
+       SET status = 'rejected',
+           rejected_reason = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND tenant_id = $2`,
+      [id, tenantId, reason]
+    );
+
+    return res.json({
+      success: true,
+      message: 'EWA request rejected',
+      data: {
+        transactionId: id,
+        status: 'rejected',
+        reason: reason,
+        rejectedAt: new Date().toISOString(),
+      },
+    });
+
+  } catch (error) {
+    console.error('Reject EWA request error:', error);
     return res.status(500).json({
       success: false,
       error: 'Internal Server Error',

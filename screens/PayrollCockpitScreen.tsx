@@ -1,5 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+
+const API_BASE = 'http://localhost:3001/api';
 
 const Stepper: React.FC = () => (
     <nav className="w-full mb-12">
@@ -28,6 +30,84 @@ const Stepper: React.FC = () => (
 );
 
 const PayrollCockpitScreen: React.FC = () => {
+    // Date state - using ISO format for API
+    const [basicStartDate] = useState('2023-09-01');
+    const [basicEndDate] = useState('2023-09-30');
+    const [otStartDate, setOtStartDate] = useState('2023-08-26');
+    const [otEndDate, setOtEndDate] = useState('2023-09-25');
+    
+    // UI state
+    const [isLoading, setIsLoading] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    // Format date for display (e.g., "01 September 2023")
+    const formatDisplayDate = (isoDate: string) => {
+        const date = new Date(isoDate + 'T00:00:00');
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+    };
+
+    // Parse display date to ISO (e.g., "26 August 2023" -> "2023-08-26")
+    const parseDisplayDate = (displayDate: string): string => {
+        const date = new Date(displayDate);
+        if (isNaN(date.getTime())) return '';
+        return date.toISOString().split('T')[0];
+    };
+
+    const handleGenerateDraft = async () => {
+        setIsLoading(true);
+        setToast(null);
+
+        try {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setToast({ message: 'Not authenticated. Please log in.', type: 'error' });
+                setIsLoading(false);
+                return;
+            }
+
+            const response = await fetch(`${API_BASE}/payroll/run-draft`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    basicStartDate,
+                    basicEndDate,
+                    otStartDate,
+                    otEndDate,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to generate draft payroll');
+            }
+
+            const totalNetPay = data.data.summary.totalNet;
+            const formattedNet = new Intl.NumberFormat('en-MY', {
+                style: 'currency',
+                currency: 'MYR',
+            }).format(totalNetPay);
+
+            setToast({
+                message: `Draft payroll generated! Total Net Pay: ${formattedNet}`,
+                type: 'success',
+            });
+
+            // Auto-hide toast after 5 seconds
+            setTimeout(() => setToast(null), 5000);
+        } catch (error) {
+            setToast({
+                message: error instanceof Error ? error.message : 'An error occurred',
+                type: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased min-h-screen flex flex-col overflow-x-hidden">
             <div className="relative flex flex-col grow w-full max-w-[1280px] mx-auto px-4 md:px-8 lg:px-12 py-8">
@@ -62,14 +142,14 @@ const PayrollCockpitScreen: React.FC = () => {
                                 <label className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Start Date</label>
                                 <div className="flex items-center gap-3 px-5 py-3 rounded-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 opacity-70">
                                     <span className="material-symbols-outlined text-slate-400">event</span>
-                                    <span className="font-medium text-slate-700 dark:text-slate-200">01 September 2023</span>
+                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatDisplayDate(basicStartDate)}</span>
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">End Date</label>
                                 <div className="flex items-center gap-3 px-5 py-3 rounded-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 opacity-70">
                                     <span className="material-symbols-outlined text-slate-400">event</span>
-                                    <span className="font-medium text-slate-700 dark:text-slate-200">30 September 2023</span>
+                                    <span className="font-medium text-slate-700 dark:text-slate-200">{formatDisplayDate(basicEndDate)}</span>
                                 </div>
                             </div>
                         </div>
@@ -92,7 +172,13 @@ const PayrollCockpitScreen: React.FC = () => {
                                     <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                                         <span className="material-symbols-outlined text-primary group-focus-within/input:text-primary transition-colors">date_range</span>
                                     </div>
-                                    <input className="w-full pl-12 pr-5 py-3 rounded-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:border-primary focus:ring-2 focus:ring-primary/20 text-slate-900 dark:text-white font-medium transition-all outline-none" placeholder="Select date" type="text" defaultValue="26 August 2023" />
+                                    <input 
+                                        className="w-full pl-12 pr-5 py-3 rounded-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:border-primary focus:ring-2 focus:ring-primary/20 text-slate-900 dark:text-white font-medium transition-all outline-none" 
+                                        placeholder="Select date" 
+                                        type="date" 
+                                        value={otStartDate}
+                                        onChange={(e) => setOtStartDate(e.target.value)}
+                                    />
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -101,7 +187,13 @@ const PayrollCockpitScreen: React.FC = () => {
                                     <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                                         <span className="material-symbols-outlined text-primary group-focus-within/input:text-primary transition-colors">date_range</span>
                                     </div>
-                                    <input className="w-full pl-12 pr-5 py-3 rounded-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:border-primary focus:ring-2 focus:ring-primary/20 text-slate-900 dark:text-white font-medium transition-all outline-none" placeholder="Select date" type="text" defaultValue="25 September 2023" />
+                                    <input 
+                                        className="w-full pl-12 pr-5 py-3 rounded-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:border-primary focus:ring-2 focus:ring-primary/20 text-slate-900 dark:text-white font-medium transition-all outline-none" 
+                                        placeholder="Select date" 
+                                        type="date" 
+                                        value={otEndDate}
+                                        onChange={(e) => setOtEndDate(e.target.value)}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -115,9 +207,14 @@ const PayrollCockpitScreen: React.FC = () => {
                                 <span className="material-symbols-outlined text-primary dark:text-amber-600">info</span>
                                 <p className="text-sm font-medium">Please verify all dates before proceeding to ledger generation.</p>
                             </div>
-                            <button className="w-full sm:w-auto px-8 py-3 bg-primary hover:bg-[#e0dd05] active:scale-95 text-slate-900 font-bold rounded-full transition-all flex items-center justify-center gap-2 group">
-                                <span>Generate Draft Ledger</span>
-                                <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                            <button 
+                                onClick={handleGenerateDraft}
+                                disabled={isLoading}
+                                className="w-full sm:w-auto px-8 py-3 bg-primary hover:bg-[#e0dd05] active:scale-95 text-slate-900 font-bold rounded-full transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <span>{isLoading ? 'Generating...' : 'Generate Draft Ledger'}</span>
+                                {!isLoading && <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>}
+                                {isLoading && <span className="material-symbols-outlined animate-spin">progress_activity</span>}
                             </button>
                         </div>
                     </div>
@@ -125,6 +222,26 @@ const PayrollCockpitScreen: React.FC = () => {
             </div>
             <div className="fixed top-0 right-0 -z-10 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2"></div>
             <div className="fixed bottom-0 left-0 -z-10 w-[400px] h-[400px] bg-blue-500/5 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2"></div>
+
+            {/* Toast Notification */}
+            {toast && (
+                <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border transition-all animate-in slide-in-from-top-2 ${
+                    toast.type === 'success' 
+                        ? 'bg-emerald-50 dark:bg-emerald-900/90 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-100' 
+                        : 'bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-700 text-red-800 dark:text-red-100'
+                }`}>
+                    <span className="material-symbols-outlined">
+                        {toast.type === 'success' ? 'check_circle' : 'error'}
+                    </span>
+                    <span className="font-medium">{toast.message}</span>
+                    <button 
+                        onClick={() => setToast(null)}
+                        className="ml-2 hover:opacity-70 transition-opacity"
+                    >
+                        <span className="material-symbols-outlined text-lg">close</span>
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

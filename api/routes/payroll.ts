@@ -3,15 +3,16 @@
  * POST /api/payroll/run-draft
  */
 
-import { Router, Request, Response } from 'express';
-import { query, withTransaction } from '../lib/db';
+import { Router, Response } from 'express';
+import { query } from '../lib/db';
 import { 
   RunDraftPayrollSchema, 
   RunDraftPayrollRequest,
   validateRequest, 
   formatZodErrors 
 } from '../lib/validation';
-import { calculateAllDeductions, calculatePCB2025, calculateEPF, calculateSOCSO } from '../../statutory-kernel';
+import { calculateAllDeductions } from '../../statutory-kernel';
+import { AuthenticatedRequest } from '../middleware/auth';
 
 export const payrollRouter = Router();
 
@@ -59,6 +60,7 @@ interface DraftPayrollResponse {
   message: string;
   data: {
     tenantId: string;
+    payrollRunId: string;
     payrollPeriod: {
       basicStart: string;
       basicEnd: string;
@@ -93,10 +95,19 @@ interface DraftPayrollResponse {
  * 2. Call statutory-kernel to calculate Tax/EPF/SOCSO
  * 3. Return JSON summary of draft payroll
  */
-payrollRouter.post('/run-draft', async (req: Request, res: Response) => {
+payrollRouter.post('/run-draft', async (req: AuthenticatedRequest, res: Response) => {
   try {
     // ========================================================================
-    // Step 1: Validate Input with Zod
+    // Step 1: Get tenant from authenticated user
+    // ========================================================================
+    const tenantId = req.user?.tenantId;
+    const userId = req.user?.userId;
+    if (!tenantId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    // ========================================================================
+    // Step 2: Validate Input with Zod
     // ========================================================================
     const validation = validateRequest(RunDraftPayrollSchema, req.body);
     
@@ -109,7 +120,6 @@ payrollRouter.post('/run-draft', async (req: Request, res: Response) => {
     }
 
     const { 
-      tenantId, 
       basicStartDate, 
       basicEndDate, 
       otStartDate, 
@@ -117,7 +127,7 @@ payrollRouter.post('/run-draft', async (req: Request, res: Response) => {
     } = validation.data as RunDraftPayrollRequest;
 
     // ========================================================================
-    // Step 2: Verify Tenant Exists
+    // Step 3: Verify Tenant Exists
     // ========================================================================
     const tenantResult = await query<{ id: string; name: string }>(
       `SELECT id, name FROM tenants WHERE id = $1 AND is_active = true`,
@@ -279,13 +289,63 @@ payrollRouter.post('/run-draft', async (req: Request, res: Response) => {
     }
 
     // ========================================================================
-    // Step 8: Return Draft Payroll Summary
+    // Step 8: Save Draft to Database
+    // ========================================================================
+    
+    // Derive payroll_month from basic start date (first of that month)
+    const payrollMonth = basicStartDate.substring(0, 7) + '-01'; // e.g., "2023-09-01"
+
+    // Delete any existing draft for this tenant/month to allow re-generation
+    await query(
+      `DELETE FROM payroll_runs WHERE tenant_id = $1 AND payroll_month = $2 AND status = 'draft'`,
+      [tenantId, payrollMonth]
+    );
+
+    // Insert payroll run
+    const runResult = await query<{ id: string }>(
+      `INSERT INTO payroll_runs (
+        tenant_id, payroll_month, run_date, basic_start_date, basic_end_date,
+        ot_start_date, ot_end_date, status, processed_by, processed_date,
+        total_employees, total_gross_amount, total_deductions, total_net_amount
+      ) VALUES ($1, $2, CURRENT_TIMESTAMP, $3, $4, $5, $6, 'draft', $7, CURRENT_TIMESTAMP, $8, $9, $10, $11)
+      RETURNING id`,
+      [
+        tenantId, payrollMonth, basicStartDate, basicEndDate,
+        otStartDate, otEndDate, userId,
+        payrollItems.length, Math.round(totalGross * 100) / 100,
+        Math.round(totalDeductions * 100) / 100, Math.round(totalNet * 100) / 100
+      ]
+    );
+
+    const payrollRunId = runResult.rows[0].id;
+
+    // Insert payroll items
+    for (const item of payrollItems) {
+      await query(
+        `INSERT INTO payroll_items (
+          tenant_id, payroll_run_id, employee_id, basic_salary,
+          overtime_hours, overtime_amount, gross_amount,
+          epf_employee, socso, pcb_tax, total_deductions, net_amount,
+          calculated_by, calculated_date
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)`,
+        [
+          tenantId, payrollRunId, item.employeeId, item.basicSalary,
+          item.overtimeHours, item.overtimeAmount, item.grossAmount,
+          item.deductions.epf, item.deductions.socso, item.deductions.pcb,
+          item.deductions.total, item.netAmount, userId
+        ]
+      );
+    }
+
+    // ========================================================================
+    // Step 9: Return Draft Payroll Summary
     // ========================================================================
     const response: DraftPayrollResponse = {
       success: true,
-      message: 'Draft payroll generated successfully',
+      message: 'Draft payroll generated and saved successfully',
       data: {
         tenantId,
+        payrollRunId,
         payrollPeriod: {
           basicStart: basicStartDate,
           basicEnd: basicEndDate,

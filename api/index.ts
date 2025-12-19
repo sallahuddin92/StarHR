@@ -2,10 +2,17 @@
  * Enterprise HR Portal - API Server
  * Express.js Backend with Zod Validation
  * Date: 2025-12-19
+ * 
+ * Security packages to install: helmet, express-rate-limit, hpp
+ * Run: docker-compose up -d --build api
  */
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+// TODO: Uncomment after running `npm install` with new packages
+// import helmet from 'helmet';
+// import rateLimit from 'express-rate-limit';
+// import hpp from 'hpp';
 import { attendanceRouter } from './routes/attendance';
 import { payrollRouter } from './routes/payroll';
 import { ewaRouter } from './routes/ewa';
@@ -16,11 +23,41 @@ import { authenticateToken } from './middleware/auth';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// ============================================================================
+// SECURITY MIDDLEWARE (Basic - upgrade after installing security packages)
+// ============================================================================
 
-// Request logging
+// CORS - Configure allowed origins
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+  'http://localhost:3000',
+  'http://localhost:5173',
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked request from origin: ${origin}`);
+      callback(null, false);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// Body parser with size limit (prevent large payload attacks)
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// ============================================================================
+// REQUEST LOGGING
+// ============================================================================
+
 app.use((req: Request, _res: Response, next: NextFunction) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
