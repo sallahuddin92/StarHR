@@ -71,7 +71,7 @@ documentsRouter.get('/employees', async (req: Request, res: Response) => {
         COALESCE(sc.basic_salary, 0) as "basicSalary"
        FROM employee_master em
        LEFT JOIN salary_config sc ON em.id = sc.employee_id AND sc.is_current = true
-       WHERE em.tenant_id = $1 AND em.status = 'ACTIVE'
+       WHERE em.tenant_id = $1 AND em.is_active = true
        ORDER BY em.full_name
        LIMIT $2 OFFSET $3`,
       [tenantId, Number(limit), Number(offset)]
@@ -101,7 +101,7 @@ documentsRouter.get('/employees', async (req: Request, res: Response) => {
 
     // Get total count
     const countResult = await query(
-      `SELECT COUNT(*) as total FROM employee_master WHERE tenant_id = $1 AND status = 'ACTIVE'`,
+      `SELECT COUNT(*) as total FROM employee_master WHERE tenant_id = $1 AND is_active = true`,
       [tenantId]
     );
 
@@ -194,7 +194,7 @@ documentsRouter.post('/generate', async (req: Request, res: Response) => {
       employeeCount = employeeIds.length;
     } else {
       const countResult = await query(
-        `SELECT COUNT(*) as total FROM employee_master WHERE tenant_id = $1 AND status = 'ACTIVE'`,
+        `SELECT COUNT(*) as total FROM employee_master WHERE tenant_id = $1 AND is_active = true`,
         [tenantId]
       );
       employeeCount = parseInt(countResult.rows[0].total);

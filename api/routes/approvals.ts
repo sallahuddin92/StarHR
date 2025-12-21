@@ -55,7 +55,7 @@ approvalsRouter.get('/pending', async (req: Request, res: Response) => {
     const { type, limit = 50 } = req.query;
 
     // Query OT approval requests from attendance_ledger
-    let whereClause = `WHERE al.tenant_id = $1 AND al.ot_approval_status = 'PENDING' AND al.ot_requested_hours > 0`;
+    let whereClause = `WHERE al.tenant_id = $1 AND al.ot_approval_status = 'pending' AND al.ot_requested_hours > 0`;
     const params: any[] = [tenantId];
 
     if (type && type !== 'ALL') {
@@ -81,7 +81,7 @@ approvalsRouter.get('/pending', async (req: Request, res: Response) => {
         al.raw_clock_in,
         al.raw_clock_out,
         al.ot_requested_hours as "requestedHours",
-        al.notes
+        al.remarks as notes
        FROM attendance_ledger al
        JOIN employee_master em ON al.employee_id = em.id
        ${whereClause}
@@ -155,7 +155,7 @@ approvalsRouter.get('/:id', async (req: Request, res: Response) => {
         al.raw_clock_out,
         al.ot_requested_hours as "requestedHours",
         al.ot_approved_hours as "approvedHours",
-        al.notes,
+        al.remarks as notes,
         al.updated_at
        FROM attendance_ledger al
        JOIN employee_master em ON al.employee_id = em.id
@@ -227,12 +227,12 @@ approvalsRouter.put('/:id/approve', async (req: Request, res: Response) => {
     // Update the attendance record to approved
     const result = await query(
       `UPDATE attendance_ledger 
-       SET ot_approval_status = 'APPROVED',
+       SET ot_approval_status = 'approved',
            ot_approved_hours = ot_requested_hours,
            approved_by = $1,
            approval_notes = $2,
            updated_at = NOW()
-       WHERE id = $3 AND tenant_id = $4 AND ot_approval_status = 'PENDING'
+       WHERE id = $3 AND tenant_id = $4 AND ot_approval_status = 'pending'
        RETURNING id, ot_requested_hours, ot_approved_hours`,
       [userId, notes || null, id, tenantId]
     );
@@ -287,12 +287,12 @@ approvalsRouter.put('/:id/reject', async (req: Request, res: Response) => {
     // Update the attendance record to rejected
     const result = await query(
       `UPDATE attendance_ledger 
-       SET ot_approval_status = 'REJECTED',
+       SET ot_approval_status = 'rejected',
            ot_approved_hours = 0,
            approved_by = $1,
            approval_notes = $2,
            updated_at = NOW()
-       WHERE id = $3 AND tenant_id = $4 AND ot_approval_status = 'PENDING'
+       WHERE id = $3 AND tenant_id = $4 AND ot_approval_status = 'pending'
        RETURNING id`,
       [userId, reason, id, tenantId]
     );
@@ -332,7 +332,7 @@ approvalsRouter.get('/history/all', async (req: Request, res: Response) => {
 
     const { status, limit = 50, offset = 0 } = req.query;
 
-    let whereClause = `WHERE al.tenant_id = $1 AND al.ot_approval_status != 'PENDING'`;
+    let whereClause = `WHERE al.tenant_id = $1 AND al.ot_approval_status != 'pending'`;
     const params: any[] = [tenantId];
     let idx = 2;
 

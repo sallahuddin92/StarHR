@@ -59,7 +59,7 @@ WHERE emp.tenant_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
   AND EXTRACT(DOW FROM d) NOT IN (0, 6)  -- Exclude weekends
 ON CONFLICT DO NOTHING;
 
--- Insert Sample Approved OT
+-- Insert Sample Approved OT (Fridays)
 UPDATE attendance_ledger
 SET 
   ot_requested_hours = 2,
@@ -69,8 +69,42 @@ WHERE
   EXTRACT(DOW FROM attendance_date) = 5  -- Fridays
   AND tenant_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
+-- Insert Pending OT Requests (Recent days - not Fridays)
+-- These will show up in the Recent Activities and Pending Approvals
+UPDATE attendance_ledger
+SET 
+  ot_requested_hours = CASE 
+    WHEN EXTRACT(DOW FROM attendance_date) = 1 THEN 1.5  -- Mondays: 1.5 hours
+    WHEN EXTRACT(DOW FROM attendance_date) = 3 THEN 2.0  -- Wednesdays: 2 hours
+    ELSE 1.0 
+  END,
+  ot_approved_hours = 0,
+  ot_approval_status = 'pending',
+  remarks = 'Urgent project deadline'
+WHERE 
+  attendance_date >= CURRENT_DATE - interval '7 days'
+  AND EXTRACT(DOW FROM attendance_date) IN (1, 3)  -- Mondays and Wednesdays
+  AND tenant_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+
+-- Insert Sample EWA Requests (Pending)
+INSERT INTO ewa_transactions (tenant_id, employee_id, amount, status, disbursement_date)
+SELECT 
+  'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+  emp.id,
+  CASE 
+    WHEN emp.employee_id = 'EMP001' THEN 1500.00
+    WHEN emp.employee_id = 'EMP002' THEN 800.00
+    ELSE 500.00
+  END,
+  'pending',
+  NULL
+FROM employee_master emp
+WHERE emp.tenant_id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
+  AND emp.employee_id IN ('EMP001', 'EMP002', 'EMP003')
+ON CONFLICT DO NOTHING;
+
 -- Success message
 DO $$
 BEGIN
-  RAISE NOTICE 'Seed data inserted successfully!';
+  RAISE NOTICE 'Seed data inserted successfully with pending approvals!';
 END $$;

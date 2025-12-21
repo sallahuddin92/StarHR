@@ -1,6 +1,11 @@
 
 import React, { useState } from 'react';
 import { api, ApiError } from '../src/lib/api';
+import { Screen } from '../App';
+
+interface PayrollCockpitScreenProps {
+    onNavigate: (screen: Screen) => void;
+}
 
 const Stepper: React.FC = () => (
     <nav className="w-full mb-12">
@@ -28,7 +33,7 @@ const Stepper: React.FC = () => (
     </nav>
 );
 
-const PayrollCockpitScreen: React.FC = () => {
+const PayrollCockpitScreen: React.FC<PayrollCockpitScreenProps> = ({ onNavigate }) => {
     // Date state - using ISO format for API
     const [basicStartDate] = useState('2023-09-01');
     const [basicEndDate] = useState('2023-09-30');
@@ -89,6 +94,13 @@ const PayrollCockpitScreen: React.FC = () => {
     return (
         <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased min-h-screen flex flex-col overflow-x-hidden">
             <div className="relative flex flex-col grow w-full max-w-[1280px] mx-auto px-4 md:px-8 lg:px-12 py-8">
+                {/* Breadcrumb */}
+                <nav className="flex items-center gap-2 text-sm mb-6">
+                    <button onClick={() => onNavigate('Dashboard')} className="text-slate-500 dark:text-slate-400 hover:text-primary transition-colors font-medium">Home</button>
+                    <span className="material-symbols-outlined text-slate-400 text-[16px]">chevron_right</span>
+                    <span className="text-slate-900 dark:text-white font-medium">Payroll Cockpit</span>
+                </nav>
+                
                 <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
                     <div className="flex flex-col gap-2">
                         <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white">Payroll Cockpit</h1>

@@ -18,7 +18,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
         try {
             // The api.auth.login method handles token storage automatically
-            const response = await api.auth.login({ email: identifier, password });
+            const response = await api.auth.login({ identifier, password });
             
             if (response.token) {
                 // Store user info for UI purposes

@@ -5,7 +5,7 @@
  * Usage:
  *   import { api } from '@/lib/api';
  *   const { data } = await api.employees.getAll();
- *   await api.auth.login({ email, password });
+ *   await api.auth.login({ identifier, password });
  */
 
 // ============================================================================
@@ -30,7 +30,7 @@ interface ApiResponse<T = unknown> {
 }
 
 interface LoginCredentials {
-  email: string;
+  identifier: string;
   password: string;
 }
 

@@ -553,10 +553,10 @@ ewaRouter.put('/:id/approve', async (req: AuthenticatedRequest, res: Response) =
       });
     }
 
-    // Update to disbursed
+    // Update to approved/processed
     await query(
       `UPDATE ewa_transactions 
-       SET status = 'disbursed',
+       SET status = 'approved',
            approved_amount = requested_amount,
            approval_date = CURRENT_TIMESTAMP,
            processing_date = CURRENT_TIMESTAMP,
@@ -567,10 +567,10 @@ ewaRouter.put('/:id/approve', async (req: AuthenticatedRequest, res: Response) =
 
     return res.json({
       success: true,
-      message: 'EWA request approved and disbursed',
+      message: 'EWA request approved',
       data: {
         transactionId: id,
-        status: 'disbursed',
+        status: 'approved',
         approvedAmount: existing.rows[0].requested_amount,
         approvedAt: new Date().toISOString(),
       },

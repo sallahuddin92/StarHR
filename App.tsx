@@ -7,14 +7,19 @@ import PendingApprovalsScreen from './screens/PendingApprovalsScreen';
 import DocumentCenterScreen from './screens/DocumentCenterScreen';
 import EmployeeMasterScreen from './screens/EmployeeMasterScreen';
 import LoginScreen from './screens/LoginScreen';
+import Layout from './src/components/Layout';
 
-type Screen = 
+export type Screen = 
   | 'Dashboard' 
   | 'Payroll' 
   | 'Attendance' 
   | 'Approvals' 
   | 'Documents' 
   | 'EmployeeMaster';
+
+export interface ScreenProps {
+  onNavigate: (screen: Screen) => void;
+}
 
 const screens: { id: Screen, name: string }[] = [
   { id: 'Dashboard', name: 'Dashboard' },
@@ -26,7 +31,7 @@ const screens: { id: Screen, name: string }[] = [
 ];
 
 const App: React.FC = () => {
-  const [activeScreen, setActiveScreen] = useState<Screen>('EmployeeMaster');
+  const [activeScreen, setActiveScreen] = useState<Screen>('Dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
 
@@ -57,46 +62,26 @@ const App: React.FC = () => {
   const renderScreen = () => {
     switch (activeScreen) {
       case 'Dashboard':
-        return <DashboardScreen />;
+        return <DashboardScreen onNavigate={setActiveScreen} />;
       case 'Payroll':
-        return <PayrollCockpitScreen />;
+        return <PayrollCockpitScreen onNavigate={setActiveScreen} />;
       case 'Attendance':
-        return <AttendanceInterventionScreen />;
+        return <AttendanceInterventionScreen onNavigate={setActiveScreen} />;
       case 'Approvals':
-        return <PendingApprovalsScreen />;
+        return <PendingApprovalsScreen onNavigate={setActiveScreen} />;
       case 'Documents':
-        return <DocumentCenterScreen />;
+        return <DocumentCenterScreen onNavigate={setActiveScreen} />;
       case 'EmployeeMaster':
-        return <EmployeeMasterScreen />;
+        return <EmployeeMasterScreen onNavigate={setActiveScreen} />;
       default:
-        return <DashboardScreen />;
+        return <DashboardScreen onNavigate={setActiveScreen} />;
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <nav className="bg-slate-900 text-white p-2 shadow-lg sticky top-0 z-[100] flex flex-wrap justify-center items-center gap-x-4 gap-y-2">
-        <span className="font-bold text-sm mr-2">Switch Screen:</span>
-        {screens.map(screen => (
-          <button 
-            key={screen.id} 
-            onClick={() => setActiveScreen(screen.id)}
-            className={`px-3 py-1 text-xs rounded-full transition-colors ${activeScreen === screen.id ? 'bg-primary text-black font-bold' : 'bg-slate-700 hover:bg-slate-600'}`}
-          >
-            {screen.name}
-          </button>
-        ))}
-        <button 
-          onClick={handleLogout}
-          className="px-3 py-1 text-xs rounded-full bg-red-600 hover:bg-red-500 transition-colors ml-4"
-        >
-          Logout
-        </button>
-      </nav>
-      <div className="flex-grow">
-        {renderScreen()}
-      </div>
-    </div>
+    <Layout activeScreen={activeScreen} onNavigate={setActiveScreen} onLogout={handleLogout}>
+      {renderScreen()}
+    </Layout>
   );
 };
 

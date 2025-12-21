@@ -353,4 +353,72 @@ attendanceRouter.get('/status/:workerId', async (req: Request, res: Response) =>
   }
 });
 
+// ============================================================================
+// PUT /api/attendance/:id/approve-ot - Approve overtime for a record
+// ============================================================================
+
+/**
+ * Approve OT hours for an attendance record
+ * Used by the Attendance Intervention screen
+ */
+attendanceRouter.put('/:id/approve-ot', async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).user?.tenantId;
+    
+    if (!tenantId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { id } = req.params;
+    const { approvedHours } = req.body;
+
+    // Validate approvedHours
+    if (typeof approvedHours !== 'number' || approvedHours < 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid approved hours. Must be a non-negative number.',
+      });
+    }
+
+    // Update the attendance record with approved OT hours
+    // Note: approved_by is set to NULL since the user may not be in employee_master
+    const result = await query(
+      `UPDATE attendance_ledger 
+       SET ot_approved_hours = $1,
+           ot_approval_status = 'approved',
+           updated_at = NOW()
+       WHERE id = $2 AND tenant_id = $3
+       RETURNING id, ot_requested_hours, ot_approved_hours, ot_approval_status`,
+      [approvedHours, id, tenantId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Attendance record not found',
+      });
+    }
+
+    const updated = result.rows[0];
+
+    return res.json({
+      success: true,
+      message: 'OT approved successfully',
+      data: {
+        id: updated.id,
+        requestedHours: updated.ot_requested_hours,
+        approvedHours: updated.ot_approved_hours,
+        status: updated.ot_approval_status,
+      },
+    });
+
+  } catch (error) {
+    console.error('Approve OT error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+    });
+  }
+});
+
 export default attendanceRouter;
