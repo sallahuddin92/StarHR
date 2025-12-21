@@ -70,7 +70,7 @@ documentsRouter.get('/employees', async (req: Request, res: Response) => {
         COALESCE(em.department, 'General') as department,
         COALESCE(sc.basic_salary, 0) as "basicSalary"
        FROM employee_master em
-       LEFT JOIN salary_config sc ON em.id = sc.employee_id AND sc.is_current = true
+       LEFT JOIN salary_config sc ON em.id = sc.employee_id AND sc.is_active = true
        WHERE em.tenant_id = $1 AND em.is_active = true
        ORDER BY em.full_name
        LIMIT $2 OFFSET $3`,
@@ -330,6 +330,218 @@ documentsRouter.post('/broadcast', async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error('Broadcast error:', err);
+    return res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+// ============================================================================
+// GET /api/documents/:employeeId/payslip/:period/pdf - Generate Payslip PDF
+// ============================================================================
+
+documentsRouter.get('/:employeeId/payslip/:period/pdf', async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).user?.tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { employeeId, period } = req.params;
+
+    // Get employee and salary info
+    const empResult = await query(
+      `SELECT 
+        em.id, em.full_name, em.employee_id, em.department, em.designation, em.email,
+        em.nric_encrypted, em.bank_account_no,
+        sc.basic_salary, sc.marital_status, sc.children
+       FROM employee_master em
+       LEFT JOIN salary_config sc ON em.id = sc.employee_id AND sc.is_active = true
+       WHERE em.id = $1 AND em.tenant_id = $2`,
+      [employeeId, tenantId]
+    );
+
+    if (empResult.rowCount === 0) {
+      return res.status(404).json({ success: false, error: 'Employee not found' });
+    }
+
+    const emp = empResult.rows[0];
+    const basicSalary = parseFloat(emp.basic_salary) || 0;
+
+    // Calculate deductions
+    const epf = Math.round(basicSalary * 0.11 * 100) / 100;
+    const socso = Math.min(Math.round(basicSalary * 0.005 * 100) / 100, 29.75);
+    const eis = Math.min(Math.round(basicSalary * 0.002 * 100) / 100, 12);
+    const pcb = Math.round(basicSalary * 0.05 * 100) / 100;
+    const totalDeductions = epf + socso + eis + pcb;
+    const netPay = basicSalary - totalDeductions;
+
+    // Generate HTML for PDF (will be rendered client-side)
+    const pdfData = {
+      success: true,
+      data: {
+        type: 'payslip',
+        employeeId: emp.id,
+        employeeName: emp.full_name,
+        employeeCode: emp.employee_id,
+        department: emp.department || 'General',
+        designation: emp.designation || 'Staff',
+        period,
+        periodDisplay: new Date(period + '-01').toLocaleDateString('en-MY', { month: 'long', year: 'numeric' }),
+        earnings: {
+          basicSalary,
+          allowances: 0,
+          overtime: 0,
+          bonus: 0,
+          grossTotal: basicSalary,
+        },
+        deductions: {
+          epfEmployee: epf,
+          socsoEmployee: socso,
+          eisEmployee: eis,
+          pcb,
+          totalDeductions,
+        },
+        employerContributions: {
+          epfEmployer: Math.round(basicSalary * 0.13 * 100) / 100,
+          socsoEmployer: Math.min(Math.round(basicSalary * 0.0175 * 100) / 100, 69.05),
+          eisEmployer: Math.min(Math.round(basicSalary * 0.002 * 100) / 100, 12),
+        },
+        netPay,
+        paymentDate: `${period}-25`,
+        bankAccount: emp.bank_account_no ? `****${emp.bank_account_no.slice(-4)}` : 'Not Set',
+        generatedAt: new Date().toISOString(),
+        companyName: 'Star Corporation Sdn Bhd',
+        companyAddress: '123 Business Park, Kuala Lumpur, Malaysia',
+      },
+    };
+
+    return res.json(pdfData);
+  } catch (err) {
+    console.error('Payslip PDF GET error:', err);
+    return res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+// ============================================================================
+// GET /api/documents/:employeeId/ea-form/:year - Generate EA Form data
+// ============================================================================
+
+documentsRouter.get('/:employeeId/ea-form/:year', async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).user?.tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { employeeId, year } = req.params;
+
+    // Get employee info
+    const empResult = await query(
+      `SELECT 
+        em.id, em.full_name, em.employee_id, em.department, em.designation, em.email,
+        em.ic_no, em.date_of_birth, em.hire_date,
+        sc.basic_salary, sc.marital_status, sc.children
+       FROM employee_master em
+       LEFT JOIN salary_config sc ON em.id = sc.employee_id AND sc.is_active = true
+       WHERE em.id = $1 AND em.tenant_id = $2`,
+      [employeeId, tenantId]
+    );
+
+    if (empResult.rowCount === 0) {
+      return res.status(404).json({ success: false, error: 'Employee not found' });
+    }
+
+    const emp = empResult.rows[0];
+    const basicSalary = parseFloat(emp.basic_salary) || 0;
+    const annualSalary = basicSalary * 12;
+
+    // Calculate annual figures
+    const annualEpf = Math.round(annualSalary * 0.11 * 100) / 100;
+    const annualSocso = Math.min(Math.round(annualSalary * 0.005 * 100) / 100, 356.4); // Max per year
+    const annualPcb = Math.round(annualSalary * 0.05 * 100) / 100;
+
+    // EA Form fields mapping
+    const eaFormData = {
+      success: true,
+      data: {
+        type: 'ea-form',
+        year: parseInt(year),
+        // Part A - Employer Details
+        employerNo: 'E1234567890',
+        employerName: 'Star Corporation Sdn Bhd',
+        employerAddress: '123 Business Park, Kuala Lumpur, 50450, Malaysia',
+        
+        // Part B - Employee Details  
+        employeeNo: emp.employee_id,
+        employeeName: emp.full_name,
+        icNo: emp.ic_no || 'Not Available',
+        dateOfBirth: emp.date_of_birth,
+        
+        // Part C - Employment Details
+        category: emp.marital_status === 'married' ? 'Resident - Married' : 'Resident - Single',
+        commencementDate: emp.hire_date,
+        
+        // Part D - Remuneration
+        salaryWages: annualSalary,
+        bonus: 0,
+        directorsFee: 0,
+        commission: 0,
+        allowances: 0,
+        gratuity: 0,
+        otherPerquisites: 0,
+        totalGrossRemuneration: annualSalary,
+        
+        // Part E - Deductions
+        epfContribution: annualEpf,
+        socsoContribution: annualSocso,
+        zakat: 0,
+        totalDeductions: annualEpf + annualSocso,
+        
+        // Part F - Tax
+        pcbDeducted: annualPcb,
+        cp38Deducted: 0,
+        totalTaxDeducted: annualPcb,
+        
+        // Metadata
+        generatedAt: new Date().toISOString(),
+        formNo: `EA-${year}-${emp.employee_id}`,
+      },
+    };
+
+    return res.json(eaFormData);
+  } catch (err) {
+    console.error('EA Form GET error:', err);
+    return res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+// ============================================================================
+// POST /api/documents/download-batch - Download multiple documents as ZIP
+// ============================================================================
+
+documentsRouter.post('/download-batch', async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).user?.tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { type = 'payslip', period, employeeIds } = req.body;
+
+    // In production, this would generate a ZIP file with all PDFs
+    // For now, return metadata for client-side batch download
+    return res.json({
+      success: true,
+      message: `Batch download initiated for ${employeeIds?.length || 0} ${type} documents`,
+      data: {
+        type,
+        period,
+        documentCount: employeeIds?.length || 0,
+        downloadUrl: `/api/documents/batch/${type}-${period}-${Date.now()}.zip`,
+        expiresAt: new Date(Date.now() + 3600000).toISOString(), // 1 hour
+      },
+    });
+  } catch (err) {
+    console.error('Batch download error:', err);
     return res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 });

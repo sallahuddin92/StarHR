@@ -229,6 +229,80 @@ interface PayslipData {
   generatedAt: string;
 }
 
+interface PayslipPdfData {
+  type: 'payslip';
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  department: string;
+  designation: string;
+  period: string;
+  periodDisplay: string;
+  earnings: {
+    basicSalary: number;
+    allowances: number;
+    overtime: number;
+    bonus: number;
+    grossTotal: number;
+  };
+  deductions: {
+    epfEmployee: number;
+    socsoEmployee: number;
+    eisEmployee: number;
+    pcb: number;
+    totalDeductions: number;
+  };
+  employerContributions: {
+    epfEmployer: number;
+    socsoEmployer: number;
+    eisEmployer: number;
+  };
+  netPay: number;
+  paymentDate: string;
+  bankAccount: string;
+  generatedAt: string;
+  companyName: string;
+  companyAddress: string;
+}
+
+interface EaFormData {
+  type: 'ea-form';
+  year: number;
+  // Part A - Employer Details
+  employerNo: string;
+  employerName: string;
+  employerAddress: string;
+  // Part B - Employee Details
+  employeeNo: string;
+  employeeName: string;
+  icNo: string;
+  dateOfBirth: string | null;
+  // Part C - Employment Details
+  category: string;
+  commencementDate: string | null;
+  // Part D - Remuneration
+  salaryWages: number;
+  bonus: number;
+  directorsFee: number;
+  commission: number;
+  allowances: number;
+  gratuity: number;
+  otherPerquisites: number;
+  totalGrossRemuneration: number;
+  // Part E - Deductions
+  epfContribution: number;
+  socsoContribution: number;
+  zakat: number;
+  totalDeductions: number;
+  // Part F - Tax
+  pcbDeducted: number;
+  cp38Deducted: number;
+  totalTaxDeducted: number;
+  // Metadata
+  generatedAt: string;
+  formNo: string;
+}
+
 // ============================================================================
 // HTTP CLIENT
 // ============================================================================
@@ -672,6 +746,30 @@ export const api = {
     },
 
     /**
+     * Get payslip PDF data for printing/download
+     */
+    async getPayslipPdf(employeeId: string, period: string): Promise<ApiResponse<PayslipPdfData>> {
+      return request<PayslipPdfData>(`/api/documents/${employeeId}/payslip/${period}/pdf`);
+    },
+
+    /**
+     * Get EA Form data for an employee
+     */
+    async getEaForm(employeeId: string, year: string): Promise<ApiResponse<EaFormData>> {
+      return request<EaFormData>(`/api/documents/${employeeId}/ea-form/${year}`);
+    },
+
+    /**
+     * Download batch of documents
+     */
+    async downloadBatch(params: { type: 'payslip' | 'ea-form'; period: string; employeeIds: string[] }): Promise<ApiResponse<{ downloadUrl: string; documentCount: number }>> {
+      return request('/api/documents/download-batch', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      });
+    },
+
+    /**
      * Broadcast documents via WhatsApp/Email
      */
     async broadcast(params: { channel?: 'whatsapp' | 'email'; employeeIds?: string[] }): Promise<ApiResponse<{ channel: string; recipientCount: number; queuedAt: string }>> {
@@ -704,4 +802,6 @@ export type {
   EmployeeDocument,
   DocumentBatch,
   PayslipData,
+  PayslipPdfData,
+  EaFormData,
 };
