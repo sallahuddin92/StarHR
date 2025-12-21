@@ -172,10 +172,6 @@ const CHILDREN_RELIEF: ChildrenRelief = {
 };
 
 const BASIC_PERSONAL_RELIEF = 9000;
-const EPF_RELIEF_RATE = 1.0; // Full EPF contributions are relieved
-const INSURANCE_RELIEF_MAX = 7000;
-const EDUCATION_RELIEF_MAX = 7000;
-const MEDICAL_RELIEF_MAX = 5000;
 
 // ============================================================================
 // EPF CONFIGURATION - 2025
@@ -198,9 +194,6 @@ const SOCSO_WAGE_CEILING = 6000; // Maximum insurable wage
 
 /**
  * Get applicable tax bracket for given income
- * @param monthlyGross - Monthly gross income
- * @param category - Tax category (default 'B')
- * @returns Applicable tax bracket
  */
 function getTaxBracket(monthlyGross: number, category: string = 'B'): TaxBracket {
   const brackets = TAX_SCHEDULE[category] || TAX_SCHEDULE['B'];
@@ -211,15 +204,11 @@ function getTaxBracket(monthlyGross: number, category: string = 'B'): TaxBracket
     }
   }
 
-  // Return highest bracket if not found
   return brackets[brackets.length - 1];
 }
 
 /**
  * Calculate monthly relief based on marital status and children
- * @param maritalStatus - 'single', 'married', 'widowed'
- * @param children - Number of children
- * @returns Monthly relief amount
  */
 function calculateMonthlyRelief(
   maritalStatus: string,
@@ -236,7 +225,6 @@ function calculateMonthlyRelief(
     maritalRelief = MARITAL_RELIEF.single / 12;
   }
 
-  // Children relief: 3000 per child, max 4 children
   const validChildren = Math.min(children, CHILDREN_RELIEF.maxChildren);
   const childrenRelief = (validChildren * CHILDREN_RELIEF.perChild) / 12;
 
@@ -245,9 +233,6 @@ function calculateMonthlyRelief(
 
 /**
  * Calculate tax for given income and tax bracket
- * @param income - Income amount to calculate tax on
- * @param bracket - Tax bracket configuration
- * @returns Calculated tax
  */
 function calculateTaxFromBracket(income: number, bracket: TaxBracket): number {
   const taxableIncome = income - bracket.minIncome;
@@ -260,24 +245,6 @@ function calculateTaxFromBracket(income: number, bracket: TaxBracket): number {
 
 /**
  * Calculate Malaysian PCB Tax (Personal Income Tax) for 2025
- *
- * Formula: P = [(Y - K) * 12] + (Yt - Kt) - D
- * Where:
- *   P  = PCB for the current month
- *   Y  = Monthly gross income
- *   K  = Monthly relief
- *   Yt = Cumulative income year-to-date
- *   Kt = Cumulative relief year-to-date
- *   D  = Cumulative PCB paid to date
- *
- * @param monthlyGross - Monthly gross salary
- * @param previousPCB - Cumulative PCB paid to date
- * @param maritalStatus - 'single', 'married', 'widowed'
- * @param children - Number of dependent children
- * @param category - Tax category: B (default), C, D, E, F, G, H, I, J
- * @param cumulativeMonths - Months worked in current year (default 1)
- * @param categoryForBracket - Category for bracket calculation (if different)
- * @returns PCB tax amount (rounded to nearest cent)
  */
 export function calculatePCB2025(
   monthlyGross: number,
@@ -288,71 +255,35 @@ export function calculatePCB2025(
   cumulativeMonths: number = 1,
   categoryForBracket?: string
 ): number {
-  // Validate inputs
-  if (monthlyGross < 0) return 0;
-  if (monthlyGross === 0) return 0;
+  if (monthlyGross <= 0) return 0;
 
   const bracketCategory = categoryForBracket || category;
-
-  // Calculate monthly relief
   const monthlyRelief = calculateMonthlyRelief(maritalStatus, children);
-
-  // Calculate cumulative values year-to-date
   const cumulativeIncome = monthlyGross * cumulativeMonths;
   const cumulativeRelief = monthlyRelief * cumulativeMonths;
-
-  // Get taxable income
   const taxableIncome = cumulativeIncome - cumulativeRelief;
 
-  if (taxableIncome <= 0) {
-    return 0;
-  }
+  if (taxableIncome <= 0) return 0;
 
-  // Get tax bracket for cumulative income
   const bracket = getTaxBracket(cumulativeIncome / cumulativeMonths, bracketCategory);
-
-  // Calculate total tax for year-to-date
   const totalTaxYTD = calculateTaxFromBracket(taxableIncome, bracket);
-
-  // Apply formula: P = [(Y - K) * 12] + (Yt - Kt) - D
-  // Simplified: P = (totalTaxYTD / cumulativeMonths) - previousPCB
-  const monthlyTax = (totalTaxYTD / cumulativeMonths) * 12 + (totalTaxYTD - previousPCB * cumulativeMonths) - previousPCB * cumulativeMonths;
-
-  // More practical implementation:
-  // Current month tax = (Total tax for YTD so far / months) - Already paid PCB
   const currentMonthPCB = totalTaxYTD - previousPCB;
-
-  // Ensure non-negative
   const finalPCB = Math.max(0, currentMonthPCB);
 
-  // Round to nearest cent (2 decimal places)
   return Math.round(finalPCB * 100) / 100;
 }
 
 /**
  * Calculate EPF Contribution (Employees Provident Fund)
- *
- * Standard Rate: 11% of monthly wages
- * Foreigner Rate: 2% (if isForeignerMandateActive)
- * Wage Ceiling: RM 15,000 per month
- *
- * @param wages - Monthly wages
- * @param isForeigner - Whether employee is a foreigner
- * @param isForeignerMandateActive - Whether foreigner EPF mandate is active
- * @returns EPF contribution amount (rounded to nearest cent)
  */
 export function calculateEPF(
   wages: number,
   isForeigner: boolean = false,
   isForeignerMandateActive: boolean = false
 ): number {
-  // Validate inputs
-  if (wages < 0) return 0;
+  if (wages <= 0) return 0;
 
-  // Apply wage ceiling
   const insureableWages = Math.min(wages, EPF_WAGE_CEILING);
-
-  // Determine contribution rate
   let rate = EPF_EMPLOYEE_RATE;
 
   if (isForeigner && isForeignerMandateActive) {
@@ -360,30 +291,18 @@ export function calculateEPF(
   }
 
   const contribution = insureableWages * rate;
-
-  // Round to nearest cent
   return Math.round(contribution * 100) / 100;
 }
 
 /**
  * Calculate SOCSO Contribution (Social Security)
- *
- * Rate: 3.25% of monthly wages
- * Wage Ceiling: RM 6,000 per month (maximum insurable wage)
- *
- * @param wages - Monthly wages
- * @returns SOCSO contribution amount (rounded to nearest cent)
  */
 export function calculateSOCSO(wages: number): number {
-  // Validate inputs
-  if (wages < 0) return 0;
+  if (wages <= 0) return 0;
 
-  // Apply wage ceiling - SOCSO only on wages up to RM 6,000
   const insureableWages = Math.min(wages, SOCSO_WAGE_CEILING);
-
   const contribution = insureableWages * SOCSO_EMPLOYEE_RATE;
 
-  // Round to nearest cent
   return Math.round(contribution * 100) / 100;
 }
 
@@ -393,14 +312,6 @@ export function calculateSOCSO(wages: number): number {
 
 /**
  * Calculate all statutory deductions for an employee
- * @param monthlyGross - Monthly gross salary
- * @param maritalStatus - Employee marital status
- * @param children - Number of dependent children
- * @param isForeigner - Whether employee is foreign national
- * @param isForeignerMandateActive - Whether foreigner EPF mandate applies
- * @param previousPCB - Cumulative PCB paid to date
- * @param category - PCB tax category
- * @returns Object containing all deductions
  */
 export function calculateAllDeductions(
   monthlyGross: number,

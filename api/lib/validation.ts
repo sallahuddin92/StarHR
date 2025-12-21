@@ -118,6 +118,18 @@ export type EWARejectInput = z.infer<typeof EWARejectSchema>;
 // VALIDATION HELPER
 // ============================================================================
 
+interface ValidationSuccess<T> {
+  success: true;
+  data: T;
+}
+
+interface ValidationFailure {
+  success: false;
+  errors: z.ZodError['errors'];
+}
+
+type ValidationResult<T> = ValidationSuccess<T> | ValidationFailure;
+
 /**
  * Validate request body against a Zod schema
  * Returns parsed data or throws formatted error
@@ -125,7 +137,7 @@ export type EWARejectInput = z.infer<typeof EWARejectSchema>;
 export function validateRequest<T>(
   schema: z.ZodSchema<T>,
   data: unknown
-): { success: true; data: T } | { success: false; errors: z.ZodError['errors'] } {
+): ValidationResult<T> {
   const result = schema.safeParse(data);
   
   if (result.success) {

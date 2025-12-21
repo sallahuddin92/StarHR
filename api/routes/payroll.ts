@@ -11,7 +11,7 @@ import {
   validateRequest, 
   formatZodErrors 
 } from '../lib/validation';
-import { calculateAllDeductions } from '../../statutory-kernel';
+import { calculateAllDeductions } from '../lib/statutory-kernel';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 export const payrollRouter = Router();

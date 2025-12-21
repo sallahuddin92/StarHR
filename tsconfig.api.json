@@ -4,6 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
+    "types": ["node"],
     "outDir": "./dist/api",
     "rootDir": "./",
     "strict": true,
@@ -15,6 +16,6 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["api/**/*", "statutory-kernel.ts"],
+  "include": ["api/**/*", "shared/**/*"],
   "exclude": ["node_modules", "dist"]
 }
