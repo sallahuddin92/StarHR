@@ -223,6 +223,74 @@ const DocumentCenterScreen: React.FC<DocumentCenterScreenProps> = ({ onNavigate 
         }
     };
 
+    // Alias for preview button
+    const handlePreview = handleViewDocument;
+
+    // Direct PDF download handler
+    const handleDownloadPdf = async (emp: EmployeeDocument) => {
+        try {
+            setDownloadingId(emp.id);
+            if (selectedProcess === 'payslip') {
+                const response = await api.documents.getPayslipPdf(emp.employeeId, currentPeriod);
+                if (response.success && response.data) {
+                    // Generate HTML and trigger download
+                    const data = response.data;
+                    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payslip - ${data.employeeName}</title>
+                        <style>* { margin: 0; padding: 0; box-sizing: border-box; } body { font-family: Arial, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
+                        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+                        .company-name { font-size: 24px; font-weight: bold; } .document-title { font-size: 16px; color: #666; margin-top: 5px; }
+                        .section { margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+                        .section-title { font-size: 14px; font-weight: bold; background: #f5f5f5; padding: 10px 15px; }
+                        .row { display: flex; justify-content: space-between; padding: 8px 15px; border-bottom: 1px solid #eee; }
+                        .label { color: #666; } .value { font-weight: 600; } .total-row { background: #f9f9f9; }
+                        .net-pay { font-size: 20px; background: #e8f5e9; padding: 20px; text-align: center; margin-top: 20px; border-radius: 8px; }
+                        .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #999; }</style>
+                        </head><body>
+                        <div class="header"><div class="company-name">${data.companyName}</div><div class="document-title">PAYSLIP - ${data.periodDisplay}</div></div>
+                        <div class="section"><div class="section-title">Employee Details</div>
+                        <div class="row"><span class="label">Name</span><span class="value">${data.employeeName}</span></div>
+                        <div class="row"><span class="label">Employee ID</span><span class="value">${data.employeeCode}</span></div>
+                        <div class="row"><span class="label">Department</span><span class="value">${data.department}</span></div></div>
+                        <div class="section"><div class="section-title">Earnings</div>
+                        <div class="row"><span class="label">Basic Salary</span><span class="value">RM ${data.earnings.basicSalary.toLocaleString()}</span></div>
+                        <div class="row"><span class="label">Allowances</span><span class="value">RM ${data.earnings.allowances.toLocaleString()}</span></div>
+                        <div class="row"><span class="label">Overtime</span><span class="value">RM ${data.earnings.overtime.toLocaleString()}</span></div>
+                        <div class="row total-row"><span class="label"><strong>Gross Total</strong></span><span class="value"><strong>RM ${data.earnings.grossTotal.toLocaleString()}</strong></span></div></div>
+                        <div class="section"><div class="section-title">Deductions</div>
+                        <div class="row"><span class="label">EPF (11%)</span><span class="value">RM ${data.deductions.epfEmployee.toLocaleString()}</span></div>
+                        <div class="row"><span class="label">SOCSO</span><span class="value">RM ${data.deductions.socsoEmployee.toLocaleString()}</span></div>
+                        <div class="row"><span class="label">EIS</span><span class="value">RM ${data.deductions.eisEmployee.toLocaleString()}</span></div>
+                        <div class="row"><span class="label">PCB (Tax)</span><span class="value">RM ${data.deductions.pcb.toLocaleString()}</span></div>
+                        <div class="row total-row"><span class="label"><strong>Total Deductions</strong></span><span class="value"><strong>RM ${data.deductions.totalDeductions.toLocaleString()}</strong></span></div></div>
+                        <div class="net-pay"><strong>NET PAY: RM ${data.netPay.toLocaleString()}</strong></div>
+                        <div class="footer">Generated: ${new Date().toLocaleDateString('en-MY')}</div>
+                        </body></html>`;
+                    const blob = new Blob([html], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Payslip-${data.employeeCode}-${currentPeriod}.html`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    setToast({ message: `Payslip downloaded for ${data.employeeName}`, type: 'success' });
+                }
+            } else {
+                const response = await api.documents.getEaForm(emp.employeeId, currentYear);
+                if (response.success && response.data) {
+                    setToast({ message: 'EA Form download started', type: 'success' });
+                }
+            }
+        } catch (err) {
+            const message = err instanceof ApiError ? err.message : 'Failed to download document';
+            setToast({ message, type: 'error' });
+        } finally {
+            setDownloadingId(null);
+            setTimeout(() => setToast(null), 3000);
+        }
+    };
+
     const handleBatchDownload = async () => {
         try {
             const selectedEmployeeIds = employeeDocs
@@ -249,16 +317,16 @@ const DocumentCenterScreen: React.FC<DocumentCenterScreenProps> = ({ onNavigate 
             const selectedEmployeeIds = employeeDocs
                 .filter(d => selectedIds.has(d.id) && d.status === 'Ready')
                 .map(d => d.employeeId);
-            
+
             const response = await api.documents.broadcast({
                 channel: 'whatsapp',
                 employeeIds: selectedEmployeeIds,
             });
-            
+
             if (response.success) {
-                setToast({ 
-                    message: `Documents queued for ${response.data?.recipientCount || selectedEmployeeIds.length} employees!`, 
-                    type: 'success' 
+                setToast({
+                    message: `Documents queued for ${response.data?.recipientCount || selectedEmployeeIds.length} employees!`,
+                    type: 'success'
                 });
             }
         } catch (err) {
@@ -290,10 +358,10 @@ const DocumentCenterScreen: React.FC<DocumentCenterScreenProps> = ({ onNavigate 
     };
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-MY', { 
-            style: 'currency', 
+        return new Intl.NumberFormat('en-MY', {
+            style: 'currency',
             currency: 'MYR',
-            minimumFractionDigits: 2 
+            minimumFractionDigits: 2
         }).format(amount);
     };
 
@@ -315,9 +383,8 @@ const DocumentCenterScreen: React.FC<DocumentCenterScreenProps> = ({ onNavigate 
         <div className="bg-background-light dark:bg-background-dark text-[#181811] dark:text-white font-display min-h-screen flex flex-col">
             {/* Toast Notification */}
             {toast && (
-                <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 ${
-                    toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                }`}>
+                <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 ${toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                    }`}>
                     <span className="material-symbols-outlined text-sm">
                         {toast.type === 'success' ? 'check_circle' : 'error'}
                     </span>
@@ -468,7 +535,7 @@ const DocumentCenterScreen: React.FC<DocumentCenterScreenProps> = ({ onNavigate 
                                                             <td className="p-4">
                                                                 <div className="flex items-center gap-3">
                                                                     {emp.avatarUrl ? (
-                                                                        <div className="size-9 rounded-full bg-cover bg-center border border-[#e5e5e0] dark:border-[#3e3d25]" style={{backgroundImage: `url(${emp.avatarUrl})`}}></div>
+                                                                        <div className="size-9 rounded-full bg-cover bg-center border border-[#e5e5e0] dark:border-[#3e3d25]" style={{ backgroundImage: `url(${emp.avatarUrl})` }}></div>
                                                                     ) : (
                                                                         <div className="size-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-[#181811]">
                                                                             {emp.employeeName.split(' ').map(n => n[0]).join('').slice(0, 2)}
@@ -488,12 +555,28 @@ const DocumentCenterScreen: React.FC<DocumentCenterScreenProps> = ({ onNavigate 
                                                             <td className="p-4 font-mono text-[#181811] dark:text-white">{formatCurrency(emp.netPay)}</td>
                                                             <td className="p-4"><StatusComponent status={emp.status} /></td>
                                                             <td className="p-4 text-right">
-                                                                <button
-                                                                    className="text-[#8c8b5f] hover:text-[#181811] dark:hover:text-primary transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                    disabled={emp.status !== 'Ready'}
-                                                                >
-                                                                    <span className="material-symbols-outlined text-[20px]">{emp.status === 'Ready' ? 'visibility' : 'visibility_off'}</span>
-                                                                </button>
+                                                                <div className="flex items-center justify-end gap-1">
+                                                                    <button
+                                                                        onClick={() => handlePreview(emp)}
+                                                                        className="text-[#8c8b5f] hover:text-[#181811] dark:hover:text-primary transition-colors p-1.5 rounded hover:bg-[#f5f5f0] dark:hover:bg-[#3e3d25] disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                        disabled={emp.status !== 'Ready'}
+                                                                        title="Preview"
+                                                                    >
+                                                                        <span className="material-symbols-outlined text-[20px]">{emp.status === 'Ready' ? 'visibility' : 'visibility_off'}</span>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDownloadPdf(emp)}
+                                                                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                                                                        disabled={emp.status !== 'Ready' || downloadingId === emp.id}
+                                                                        title="Download PDF"
+                                                                    >
+                                                                        {downloadingId === emp.id ? (
+                                                                            <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
+                                                                        ) : (
+                                                                            <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                                                                        )}
+                                                                    </button>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     ))}
