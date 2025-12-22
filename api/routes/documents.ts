@@ -6,6 +6,9 @@
 import { Router, Request, Response } from 'express';
 import { query } from '../lib/db';
 import { z } from 'zod';
+import { generatePayslipPDF, generatePayrollLedgerPDF, PayrollItem } from '../lib/pdf-generator';
+import { Employee } from '../../shared/types';
+
 
 export const documentsRouter = Router();
 
@@ -90,7 +93,7 @@ documentsRouter.get('/employees', async (req: Request, res: Response) => {
         employeeName: row.employeeName,
         employeeCode: row.employeeCode,
         department: row.department,
-        avatarUrl: idx % 3 === 0 ? null : `https://picsum.photos/id/${342 + idx}/100/100`,
+        avatarUrl: idx % 3 === 0 ? null : `https://placehold.co/100x100`,
         netPay: row.basicSalary * 0.85, // Approximate after deductions
         status,
         documentType: type as 'payslip' | 'ea-form',
@@ -545,3 +548,53 @@ documentsRouter.post('/download-batch', async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 });
+
+
+// ============================================================================
+// GET /api/documents/payslip/:id/download - Download Payslip PDF
+// ============================================================================
+documentsRouter.get('/payslip/:id/download', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { rows: items } = await query('SELECT * FROM payroll_items WHERE id = $1', [id]);
+      if (items.length === 0) {
+        return res.status(404).json({ success: false, message: 'Payslip not found' });
+      }
+      const payrollItem = items[0] as PayrollItem;
+  
+      const { rows: employees } = await query('SELECT * FROM employee_master WHERE id = $1', [payrollItem.employee_id]);
+      if (employees.length === 0) {
+          return res.status(404).json({ success: false, message: 'Employee not found' });
+      }
+      const employee = employees[0] as Employee;
+  
+      const pdfBuffer = await generatePayslipPDF(payrollItem, employee);
+  
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=payslip-${employee.employeeId}.pdf`);
+      res.send(pdfBuffer);
+  
+    } catch (err) {
+      console.error('Payslip download error:', err);
+      return res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+  });
+  
+  
+  // ============================================================================
+  // GET /api/documents/ledger/:runId/download - Download Payroll Ledger PDF
+  // ============================================================================
+  documentsRouter.get('/ledger/:runId/download', async (req: Request, res: Response) => {
+    try {
+      const { runId } = req.params;
+      const pdfBuffer = await generatePayrollLedgerPDF(runId);
+  
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=payroll-ledger-${runId}.pdf`);
+      res.send(pdfBuffer);
+  
+    } catch (err) {
+      console.error('Ledger download error:', err);
+      return res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+  });

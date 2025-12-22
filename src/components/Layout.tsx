@@ -72,7 +72,7 @@ const Layout: React.FC<LayoutProps> = ({ activeScreen, onNavigate, onLogout, chi
             <span className="font-semibold">Enterprise HR Portal</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="size-9 rounded-full bg-slate-200 bg-center bg-cover border-2 border-white shadow" style={{ backgroundImage: `url('https://picsum.photos/id/237/100/100')` }}></div>
+            <div className="size-9 rounded-full bg-slate-200 bg-center bg-cover border-2 border-white shadow" style={{ backgroundImage: `url('https://placehold.co/100x100')` }}></div>
           </div>
         </header>
 

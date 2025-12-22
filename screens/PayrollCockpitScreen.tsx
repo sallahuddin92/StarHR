@@ -35,8 +35,8 @@ const Stepper: React.FC = () => (
 
 const PayrollCockpitScreen: React.FC<PayrollCockpitScreenProps> = ({ onNavigate }) => {
     // Date state - using ISO format for API
-    const [basicStartDate] = useState('2023-09-01');
-    const [basicEndDate] = useState('2023-09-30');
+    const [basicStartDate, setBasicStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
+    const [basicEndDate, setBasicEndDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10));
     const [otStartDate, setOtStartDate] = useState('2023-08-26');
     const [otEndDate, setOtEndDate] = useState('2023-09-25');
     

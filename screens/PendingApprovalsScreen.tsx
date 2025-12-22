@@ -190,7 +190,7 @@ const PendingApprovalsScreen: React.FC<PendingApprovalsScreenProps> = ({ onNavig
                                             <div className="flex items-center gap-4">
                                                 <div
                                                     className="bg-center bg-no-repeat bg-cover rounded-full size-14 border-2 border-white dark:border-gray-700 shadow-sm"
-                                                    style={{backgroundImage: `url('${approval.avatarUrl || `https://picsum.photos/id/${342 + idx}/140/140`}')`}}
+                                                    style={{backgroundImage: `url('${approval.avatarUrl || `https://placehold.co/140x140`}')`}}
                                                 ></div>
                                                 <div className="flex flex-col">
                                                     <h3 className="text-xl font-bold text-text-main dark:text-white">{approval.employeeName}</h3>

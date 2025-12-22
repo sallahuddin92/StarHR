@@ -24,7 +24,7 @@ import authRouter from './routes/auth';
 import { authenticateToken } from './middleware/auth';
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3001;
 
 // ============================================================================
 // SECURITY MIDDLEWARE (Basic - upgrade after installing security packages)

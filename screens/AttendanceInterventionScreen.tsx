@@ -48,7 +48,7 @@ function formatDate(dateString: string | null | undefined): string {
 }
 
 function avatarUrl(seed: number): string {
-    return `https://picsum.photos/id/${1005 + (seed % 30)}/100/100`;
+    return `https://placehold.co/100x100`;
 }
 
 function safeNumber(val: any): number {

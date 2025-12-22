@@ -1,122 +1,77 @@
-/**
- * Dashboard Stats API Routes
- * GET /api/stats/summary
- */
-
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { query } from '../lib/db';
-import { AuthenticatedRequest } from '../middleware/auth';
 
 export const statsRouter = Router();
 
-// ============================================================================
-// INTERFACES
-// ============================================================================
+statsRouter.get('/summary', async (req: Request, res: Response) => {
+    try {
+        const tenantId = (req as any).user?.tenantId;
+        if (!tenantId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
 
-interface DashboardSummary {
-  totalEmployees: number;
-  newEmployeesThisMonth: number;
-  pendingLeave: number;
-  pendingAttendance: number;
-  pendingEwa: number;
-  nextPayrollDate: string | null;
-  payrollCutoffDate: string | null;
-}
+        const employeeCountResult = await query('SELECT COUNT(*) as count FROM employee_master WHERE tenant_id = $1 AND is_active = true', [tenantId]);
+        const totalEmployees = parseInt(employeeCountResult.rows[0].count, 10);
 
-// ============================================================================
-// GET /api/stats/summary
-// ============================================================================
+        const missingPunchResult = await query(
+            `SELECT COUNT(*) as count 
+             FROM attendance_ledger 
+             WHERE tenant_id = $1 
+               AND attendance_date = CURRENT_DATE 
+               AND (verified_clock_in IS NULL OR verified_clock_out IS NULL)`,
+            [tenantId]
+        );
+        const missingPunchCount = parseInt(missingPunchResult.rows[0].count, 10);
 
-/**
- * Get dashboard summary statistics
- */
-statsRouter.get('/summary', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const tenantId = req.user?.tenantId;
+        const pendingEwaResult = await query(
+            `SELECT COUNT(*) as count 
+             FROM ewa_transactions 
+             WHERE tenant_id = $1 
+               AND status = 'pending'`,
+            [tenantId]
+        );
+        const pendingEwaCount = parseInt(pendingEwaResult.rows[0].count, 10);
 
-    if (!tenantId) {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized',
-        message: 'Missing tenant information',
-      });
+        const nextPayrollDateResult = await query(
+            `SELECT MIN(payroll_month) as next_payroll_date
+             FROM payroll_runs
+             WHERE tenant_id = $1 AND status = 'draft'`,
+            [tenantId]
+        );
+        const nextPayrollDate = nextPayrollDateResult.rows[0].next_payroll_date;
+
+        const newEmployeesThisMonthResult = await query(
+            `SELECT COUNT(*) as count
+             FROM employee_master
+             WHERE tenant_id = $1 AND date_of_joining >= date_trunc('month', CURRENT_DATE)`,
+            [tenantId]
+        );
+
+        const newEmployeesThisMonth = parseInt(newEmployeesThisMonthResult.rows[0].count, 10);
+        
+        const payrollCutoffDateResult = await query(
+            `SELECT (date_trunc('month', MIN(payroll_month)) + interval '24 days') as cutoff_date
+             FROM payroll_runs
+             WHERE tenant_id = $1 AND status = 'draft'`,
+            [tenantId]
+        );
+        const payrollCutoffDate = payrollCutoffDateResult.rows[0].cutoff_date;
+
+
+        res.json({
+            success: true,
+            data: {
+                totalEmployees,
+                pendingAttendance: missingPunchCount,
+                pendingEwa: pendingEwaCount,
+                nextPayrollDate: nextPayrollDate,
+                newEmployeesThisMonth: newEmployeesThisMonth,
+                payrollCutoffDate: payrollCutoffDate
+
+            },
+        });
+    } catch (err) {
+        console.error('Stats summary GET error:', err);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
-
-    // Get total active employees
-    const employeesResult = await query<{ count: number }>(
-      `SELECT COUNT(*) as count 
-       FROM employee_master 
-       WHERE tenant_id = $1 AND is_active = true`,
-      [tenantId]
-    );
-    const totalEmployees = Number(employeesResult.rows[0]?.count) || 0;
-
-    // Get new employees this month
-    const newEmployeesResult = await query<{ count: number }>(
-      `SELECT COUNT(*) as count 
-       FROM employee_master 
-       WHERE tenant_id = $1 
-         AND is_active = true 
-         AND date_of_joining >= date_trunc('month', CURRENT_DATE)`,
-      [tenantId]
-    );
-    const newEmployeesThisMonth = Number(newEmployeesResult.rows[0]?.count) || 0;
-
-    // Get pending attendance interventions (missing punch or pending OT)
-    const pendingAttendanceResult = await query<{ count: number }>(
-      `SELECT COUNT(*) as count 
-       FROM attendance_ledger 
-       WHERE tenant_id = $1 
-         AND (raw_clock_out IS NULL OR ot_approval_status = 'pending')
-         AND attendance_date >= CURRENT_DATE - INTERVAL '30 days'`,
-      [tenantId]
-    );
-    const pendingAttendance = Number(pendingAttendanceResult.rows[0]?.count) || 0;
-
-    // Get pending EWA requests
-    const pendingEwaResult = await query<{ count: number }>(
-      `SELECT COUNT(*) as count 
-       FROM ewa_transactions 
-       WHERE tenant_id = $1 AND status = 'pending'`,
-      [tenantId]
-    );
-    const pendingEwa = Number(pendingEwaResult.rows[0]?.count) || 0;
-
-    // Calculate next payroll date (assume 28th of each month)
-    const today = new Date();
-    let nextPayrollDate = new Date(today.getFullYear(), today.getMonth(), 28);
-    if (today.getDate() > 28) {
-      nextPayrollDate = new Date(today.getFullYear(), today.getMonth() + 1, 28);
-    }
-
-    // Calculate cutoff date (3 days before payroll)
-    const cutoffDate = new Date(nextPayrollDate);
-    cutoffDate.setDate(cutoffDate.getDate() - 3);
-
-    const formatDate = (d: Date) => d.toISOString().split('T')[0];
-
-    const summary: DashboardSummary = {
-      totalEmployees,
-      newEmployeesThisMonth,
-      pendingLeave: 0, // TODO: Implement leave module
-      pendingAttendance,
-      pendingEwa,
-      nextPayrollDate: formatDate(nextPayrollDate),
-      payrollCutoffDate: formatDate(cutoffDate),
-    };
-
-    return res.json({
-      success: true,
-      data: summary,
-    });
-
-  } catch (error) {
-    console.error('Get dashboard summary error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal Server Error',
-    });
-  }
 });
-
-export default statsRouter;
