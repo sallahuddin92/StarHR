@@ -23,10 +23,14 @@ interface AttendanceRecord {
     status: AttendanceStatus;
 }
 
-function deriveStatus(rawClockOut: string | null, otRequested: number, otApproved: number): AttendanceStatus {
+function deriveStatus(rawClockOut: string | null, otRequested: number, otApproved: number, otApprovalStatus: string | null): AttendanceStatus {
     if (!rawClockOut) return 'MISSING_PUNCH';
+    // Use the actual approval status from database
+    if (otApprovalStatus === 'approved') return 'NORMAL';
+    if (otApprovalStatus === 'rejected') return 'OT_REJECTED';
+    // Fallback for records without explicit status
     if (otRequested > 0 && otApproved === 0) return 'OT_REJECTED';
-    if (otRequested !== otApproved) return 'PENDING_REVIEW';
+    if (otRequested !== otApproved && otRequested > 0) return 'PENDING_REVIEW';
     return 'NORMAL';
 }
 
@@ -75,7 +79,7 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [stats, setStats] = useState({ pending: 0, approved: 0, errors: 0 });
-    
+
     // Filter states
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
@@ -92,7 +96,7 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                 const mapped: AttendanceRecord[] = rows.map((row: any, idx: number) => {
                     const sysOT = safeNumber(row.ot_requested_hours);
                     const verifiedOT = safeNumber(row.ot_approved_hours);
-                    const status = deriveStatus(row.raw_clock_out, sysOT, verifiedOT);
+                    const status = deriveStatus(row.raw_clock_out, sysOT, verifiedOT, row.ot_approval_status);
                     const rawIn = formatTime(row.raw_clock_in);
                     const rawOut = formatTime(row.raw_clock_out);
                     return {
@@ -147,24 +151,24 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
     const filteredRecords = useMemo(() => {
         return records.filter(r => {
             // Search filter
-            const matchesSearch = searchQuery === '' || 
+            const matchesSearch = searchQuery === '' ||
                 r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 r.empId.toLowerCase().includes(searchQuery.toLowerCase());
-            
+
             // Status filter
             const matchesStatus = statusFilter === 'ALL' || r.status === statusFilter;
-            
+
             // Errors only toggle
-            const matchesErrorsOnly = !showErrorsOnly || 
+            const matchesErrorsOnly = !showErrorsOnly ||
                 r.status === 'MISSING_PUNCH' || r.status === 'OT_REJECTED';
-            
+
             return matchesSearch && matchesStatus && matchesErrorsOnly;
         });
     }, [records, searchQuery, statusFilter, showErrorsOnly]);
 
     // Handle undo single record
     const handleUndo = (id: string) => {
-        setRecords(prev => prev.map(r => 
+        setRecords(prev => prev.map(r =>
             r.id === id ? { ...r, verifiedOT: r.initialVerifiedOT } : r
         ));
     };
@@ -173,11 +177,11 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
     const handleApproveSingle = async (id: string) => {
         const record = records.find(r => r.id === id);
         if (!record) return;
-        
+
         setActionLoading(true);
         try {
             await api.attendance.approveOT(id, record.verifiedOT);
-            setRecords(prev => prev.map(r => 
+            setRecords(prev => prev.map(r =>
                 r.id === id ? { ...r, status: 'NORMAL' as AttendanceStatus, initialVerifiedOT: r.verifiedOT } : r
             ));
             setToast({ message: 'OT approved successfully', type: 'success' });
@@ -192,15 +196,15 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
     // Handle batch approve
     const handleBatchApprove = async () => {
         if (selectedIds.size === 0) return;
-        
+
         setActionLoading(true);
         let successCount = 0;
         let failCount = 0;
-        
+
         for (const id of selectedIds) {
             const record = records.find(r => r.id === id);
             if (!record) continue;
-            
+
             try {
                 await api.attendance.approveOT(id, record.verifiedOT);
                 successCount++;
@@ -208,26 +212,26 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                 failCount++;
             }
         }
-        
+
         // Refresh data after batch operation
         if (successCount > 0) {
-            setRecords(prev => prev.map(r => 
+            setRecords(prev => prev.map(r =>
                 selectedIds.has(r.id) ? { ...r, status: 'NORMAL' as AttendanceStatus, initialVerifiedOT: r.verifiedOT } : r
             ));
             setSelectedIds(new Set());
         }
-        
+
         setActionLoading(false);
-        setToast({ 
-            message: `Approved ${successCount} records${failCount > 0 ? `, ${failCount} failed` : ''}`, 
-            type: failCount > 0 ? 'error' : 'success' 
+        setToast({
+            message: `Approved ${successCount} records${failCount > 0 ? `, ${failCount} failed` : ''}`,
+            type: failCount > 0 ? 'error' : 'success'
         });
         setTimeout(() => setToast(null), 3000);
     };
 
     // Handle reset changes for selected records
     const handleResetChanges = () => {
-        setRecords(prev => prev.map(r => 
+        setRecords(prev => prev.map(r =>
             selectedIds.has(r.id) ? { ...r, verifiedOT: r.initialVerifiedOT } : r
         ));
         setToast({ message: 'Changes reset', type: 'success' });
@@ -251,8 +255,8 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                 <div className="flex flex-col items-center gap-4 text-center">
                     <span className="material-symbols-outlined text-red-500 text-5xl">error</span>
                     <p className="text-red-600 dark:text-red-400 font-medium">{error}</p>
-                    <button 
-                        onClick={() => window.location.reload()} 
+                    <button
+                        onClick={() => window.location.reload()}
                         className="px-4 py-2 rounded-full bg-primary text-black font-medium hover:bg-[#eae605]"
                     >
                         Retry
@@ -266,16 +270,15 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
         <div className="bg-background-light dark:bg-background-dark font-display text-[#181811] dark:text-[#e6e6db]">
             {/* Toast Notification */}
             {toast && (
-                <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 ${
-                    toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                }`}>
+                <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 ${toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                    }`}>
                     <span className="material-symbols-outlined text-sm">
                         {toast.type === 'success' ? 'check_circle' : 'error'}
                     </span>
                     {toast.message}
                 </div>
             )}
-            
+
             <div className="max-w-[1400px] mx-auto w-full p-4 md:p-8 flex flex-col gap-6">
                 <div className="flex flex-col gap-6">
                     <div className="flex items-center gap-2 text-sm">
@@ -321,9 +324,9 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                             <div className="relative w-full md:w-64">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[#8c8b5f]">search</span>
-                                <input 
-                                    className="w-full h-10 pl-10 pr-4 rounded-full border border-[#e6e6db] dark:border-[#3a3a30] bg-white dark:bg-surface-dark text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-[#8c8b5f]" 
-                                    placeholder="Search Employee Name or ID" 
+                                <input
+                                    className="w-full h-10 pl-10 pr-4 rounded-full border border-[#e6e6db] dark:border-[#3a3a30] bg-white dark:bg-surface-dark text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-[#8c8b5f]"
+                                    placeholder="Search Employee Name or ID"
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -331,7 +334,7 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                             </div>
                             <div className="h-8 w-[1px] bg-[#e6e6db] dark:bg-[#3a3a30] hidden md:block"></div>
                             <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
-                                <select 
+                                <select
                                     className="h-9 rounded-full border border-[#e6e6db] dark:border-[#3a3a30] bg-white dark:bg-surface-dark px-4 text-sm font-medium hover:border-primary transition-colors appearance-none cursor-pointer"
                                     value={statusFilter}
                                     onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
@@ -347,8 +350,8 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                         <div className="flex items-center gap-2">
                             <label className="flex items-center cursor-pointer">
                                 <div className="relative">
-                                    <input 
-                                        type="checkbox" 
+                                    <input
+                                        type="checkbox"
                                         className="sr-only peer"
                                         checked={showErrorsOnly}
                                         onChange={(e) => setShowErrorsOnly(e.target.checked)}
@@ -412,10 +415,10 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                                                 <td className="p-4 text-right font-medium text-[#181811] dark:text-gray-200">{(rec.sysOT ?? 0).toFixed(1)}</td>
                                                 <td className="p-4 text-right">
                                                     <div className={`relative inline-block ${isEdited ? 'animate-pulse' : ''}`}>
-                                                        <input 
-                                                            type="number" 
-                                                            value={(rec.verifiedOT ?? 0).toFixed(1)} 
-                                                            onChange={(e) => handleOtChange(rec.id, e.target.value)} 
+                                                        <input
+                                                            type="number"
+                                                            value={(rec.verifiedOT ?? 0).toFixed(1)}
+                                                            onChange={(e) => handleOtChange(rec.id, e.target.value)}
                                                             className={`w-20 text-right p-1.5 rounded-lg transition-all font-medium ${isEdited ? 'border border-yellow-300 bg-primary/10 dark:bg-yellow-900/30 dark:border-yellow-700 text-yellow-900 dark:text-yellow-200 font-bold' : 'border border-transparent bg-transparent hover:border-[#e6e6db] dark:hover:border-gray-600 focus:bg-white dark:focus:bg-gray-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none'}`}
                                                         />
                                                         {isEdited && <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary"></div>}
@@ -426,17 +429,17 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                                                     <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         {rec.status === 'PENDING_REVIEW' && isEdited ? (
                                                             <>
-                                                                <button 
+                                                                <button
                                                                     onClick={() => handleUndo(rec.id)}
-                                                                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-[#8c8b5f] hover:text-red-500" 
+                                                                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-[#8c8b5f] hover:text-red-500"
                                                                     title="Undo Changes"
                                                                     disabled={actionLoading}
                                                                 >
                                                                     <span className="material-symbols-outlined text-[20px]">undo</span>
                                                                 </button>
-                                                                <button 
+                                                                <button
                                                                     onClick={() => handleApproveSingle(rec.id)}
-                                                                    className="p-1.5 hover:bg-primary/20 rounded-full text-green-600" 
+                                                                    className="p-1.5 hover:bg-primary/20 rounded-full text-green-600"
                                                                     title="Approve"
                                                                     disabled={actionLoading}
                                                                 >
@@ -444,15 +447,15 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                                                                 </button>
                                                             </>
                                                         ) : rec.status === 'MISSING_PUNCH' ? (
-                                                            <button 
-                                                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-primary" 
+                                                            <button
+                                                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-primary"
                                                                 title="Fix Record (Coming Soon)"
                                                             >
                                                                 <span className="material-symbols-outlined text-[20px] fill">edit</span>
                                                             </button>
                                                         ) : (
-                                                            <button 
-                                                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-[#8c8b5f]" 
+                                                            <button
+                                                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-[#8c8b5f]"
                                                                 title="View Logs"
                                                             >
                                                                 <span className="material-symbols-outlined text-[20px]">visibility</span>
@@ -470,7 +473,7 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                             <div>Showing {filteredRecords.length} of {records.length} record{records.length !== 1 ? 's' : ''}</div>
                             <div className="flex items-center gap-2">
                                 {searchQuery || statusFilter !== 'ALL' || showErrorsOnly ? (
-                                    <button 
+                                    <button
                                         onClick={() => { setSearchQuery(''); setStatusFilter('ALL'); setShowErrorsOnly(false); }}
                                         className="text-primary hover:underline text-sm"
                                     >
@@ -493,14 +496,14 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                             <button onClick={() => setSelectedIds(new Set())} className="text-[#8c8b5f] hover:text-[#181811] dark:hover:text-white underline text-sm">Unselect all</button>
                         </div>
                         <div className="flex items-center gap-3 w-full md:w-auto">
-                            <button 
+                            <button
                                 onClick={handleResetChanges}
                                 disabled={actionLoading}
                                 className="flex-1 md:flex-none h-10 px-6 rounded-full border border-[#e6e6db] dark:border-[#3a3a30] hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-[#181811] dark:text-white transition-colors disabled:opacity-50"
                             >
                                 Reset Changes
                             </button>
-                            <button 
+                            <button
                                 onClick={handleBatchApprove}
                                 disabled={actionLoading}
                                 className="flex-1 md:flex-none h-10 px-6 rounded-full bg-primary hover:bg-[#eae605] text-black font-semibold transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
