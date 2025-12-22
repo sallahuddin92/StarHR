@@ -6,16 +6,24 @@ import AttendanceInterventionScreen from './screens/AttendanceInterventionScreen
 import PendingApprovalsScreen from './screens/PendingApprovalsScreen';
 import DocumentCenterScreen from './screens/DocumentCenterScreen';
 import EmployeeMasterScreen from './screens/EmployeeMasterScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
+import TravelScreen from './screens/TravelScreen';
+import ProjectCostingScreen from './screens/ProjectCostingScreen';
+import TrainingScreen from './screens/TrainingScreen';
 import LoginScreen from './screens/LoginScreen';
 import Layout from './src/components/Layout';
 
-export type Screen = 
-  | 'Dashboard' 
-  | 'Payroll' 
-  | 'Attendance' 
-  | 'Approvals' 
-  | 'Documents' 
-  | 'EmployeeMaster';
+export type Screen =
+  | 'Dashboard'
+  | 'Payroll'
+  | 'Attendance'
+  | 'Approvals'
+  | 'Documents'
+  | 'EmployeeMaster'
+  | 'Onboarding'
+  | 'Travel'
+  | 'ProjectCosting'
+  | 'Training';
 
 export interface ScreenProps {
   onNavigate: (screen: Screen) => void;
@@ -28,6 +36,10 @@ const screens: { id: Screen, name: string }[] = [
   { id: 'Approvals', name: 'Pending Approvals' },
   { id: 'Documents', name: 'Document Center' },
   { id: 'EmployeeMaster', name: 'Employee Master' },
+  { id: 'Onboarding', name: 'Onboarding' },
+  { id: 'Travel', name: 'Travel & Expense' },
+  { id: 'ProjectCosting', name: 'Project Costing' },
+  { id: 'Training', name: 'Training' },
 ];
 
 const App: React.FC = () => {
@@ -73,6 +85,14 @@ const App: React.FC = () => {
         return <DocumentCenterScreen onNavigate={setActiveScreen} />;
       case 'EmployeeMaster':
         return <EmployeeMasterScreen onNavigate={setActiveScreen} />;
+      case 'Onboarding':
+        return <OnboardingScreen onNavigate={setActiveScreen} />;
+      case 'Travel':
+        return <TravelScreen onNavigate={setActiveScreen} />;
+      case 'ProjectCosting':
+        return <ProjectCostingScreen onNavigate={setActiveScreen} />;
+      case 'Training':
+        return <TrainingScreen onNavigate={setActiveScreen} />;
       default:
         return <DashboardScreen onNavigate={setActiveScreen} />;
     }

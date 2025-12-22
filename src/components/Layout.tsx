@@ -6,7 +6,11 @@ type ScreenId =
   | 'Attendance'
   | 'Approvals'
   | 'Documents'
-  | 'EmployeeMaster';
+  | 'EmployeeMaster'
+  | 'Onboarding'
+  | 'Travel'
+  | 'ProjectCosting'
+  | 'Training';
 
 interface LayoutProps {
   activeScreen: ScreenId;
@@ -18,10 +22,14 @@ interface LayoutProps {
 const navItems: { id: ScreenId; name: string; icon: string }[] = [
   { id: 'Dashboard', name: 'Dashboard', icon: 'dashboard' },
   { id: 'Payroll', name: 'Payroll Cockpit', icon: 'payments' },
-  { id: 'Attendance', name: 'Attendance Intervention', icon: 'schedule' },
+  { id: 'Attendance', name: 'Attendance', icon: 'schedule' },
   { id: 'Approvals', name: 'Pending Approvals', icon: 'inbox' },
   { id: 'Documents', name: 'Document Center', icon: 'description' },
   { id: 'EmployeeMaster', name: 'Employee Master', icon: 'group' },
+  { id: 'Onboarding', name: 'On/Offboarding', icon: 'person_add' },
+  { id: 'Travel', name: 'Travel & Expense', icon: 'flight_takeoff' },
+  { id: 'ProjectCosting', name: 'Project Costing', icon: 'account_tree' },
+  { id: 'Training', name: 'Training', icon: 'school' },
 ];
 
 const Layout: React.FC<LayoutProps> = ({ activeScreen, onNavigate, onLogout, children }) => {
@@ -42,11 +50,10 @@ const Layout: React.FC<LayoutProps> = ({ activeScreen, onNavigate, onLogout, chi
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-l-4 ${
-                  isActive
+                className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-l-4 ${isActive
                     ? 'bg-primary/15 text-primary border-primary'
                     : 'text-slate-300 border-transparent hover:bg-slate-800 hover:text-white'
-                }`}
+                  }`}
               >
                 <span className="material-symbols-outlined text-lg">{item.icon}</span>
                 <span className="font-medium">{item.name}</span>
