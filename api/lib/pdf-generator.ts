@@ -42,13 +42,14 @@ export interface PayrollItem {
 export async function generatePayslipPDF(payrollItem: PayrollItem, employee: Employee): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     // Password protection using last 6 digits of NRIC
-    const userPassword = employee.nric ? employee.nric.slice(-6) : '123456';
-    
+    const password = employee.nric ? employee.nric.slice(-6) : '123456';
+    const ownerPassword = process.env.PDF_OWNER_PASSWORD || 'hr-admin-2025';
+
     const doc = new PDFDocument({
       size: 'A4',
       margins: { top: 50, bottom: 50, left: 72, right: 72 },
-      userPassword: userPassword,
-      ownerPassword: 'hr-admin-2025',
+      userPassword: password,
+      ownerPassword: ownerPassword,
       permissions: {
         printing: 'highResolution',
         modifying: false,
@@ -109,12 +110,12 @@ export async function generatePayslipPDF(payrollItem: PayrollItem, employee: Emp
 }
 
 export async function generatePayrollLedgerPDF(payrollRunId: string): Promise<Buffer> {
-    const { rows: items } = await query('SELECT * FROM payroll_items WHERE payroll_run_id = $1', [payrollRunId]);
-    const payrollItems = items as PayrollItem[];
-    
-    let totalGross = 0;
-    let totalDeductions = 0;
-    let totalNet = 0;
+  const { rows: items } = await query('SELECT * FROM payroll_items WHERE payroll_run_id = $1', [payrollRunId]);
+  const payrollItems = items as PayrollItem[];
+
+  let totalGross = 0;
+  let totalDeductions = 0;
+  let totalNet = 0;
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
@@ -140,12 +141,12 @@ export async function generatePayrollLedgerPDF(payrollRunId: string): Promise<Bu
     const grossX = 250;
     const deductionsX = 400;
     const netX = 550;
-    
+
     doc.fontSize(10).font('Helvetica-Bold');
     doc.text('Employee', itemX, tableTop);
     doc.text('Gross Pay', grossX, tableTop);
     doc.text('Deductions', deductionsX, tableTop);
-    doc.text('Net Pay', netX, tableTop, {width: 100, align: 'right'});
+    doc.text('Net Pay', netX, tableTop, { width: 100, align: 'right' });
     doc.font('Helvetica');
 
     // Table Body
@@ -154,7 +155,7 @@ export async function generatePayrollLedgerPDF(payrollRunId: string): Promise<Bu
       doc.text(item.employeeId, itemX, y);
       doc.text(`RM ${item.grossAmount.toFixed(2)}`, grossX, y);
       doc.text(`RM ${item.totalDeductions.toFixed(2)}`, deductionsX, y);
-      doc.text(`RM ${item.netAmount.toFixed(2)}`, netX, y, {width: 100, align: 'right'});
+      doc.text(`RM ${item.netAmount.toFixed(2)}`, netX, y, { width: 100, align: 'right' });
       y += 20;
 
       totalGross += item.grossAmount;
@@ -168,7 +169,7 @@ export async function generatePayrollLedgerPDF(payrollRunId: string): Promise<Bu
     doc.text('Total', itemX, totalY);
     doc.text(`RM ${totalGross.toFixed(2)}`, grossX, totalY);
     doc.text(`RM ${totalDeductions.toFixed(2)}`, deductionsX, totalY);
-    doc.text(`RM ${totalNet.toFixed(2)}`, netX, totalY, {width: 100, align: 'right'});
+    doc.text(`RM ${totalNet.toFixed(2)}`, netX, totalY, { width: 100, align: 'right' });
     doc.font('Helvetica');
 
 

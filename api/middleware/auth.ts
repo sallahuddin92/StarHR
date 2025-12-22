@@ -17,6 +17,12 @@ export interface AuthenticatedRequest extends Request {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-insecure-secret';
 
+// Fail-safe: Reject insecure secret in production
+if (process.env.NODE_ENV === 'production' && JWT_SECRET === 'dev-insecure-secret') {
+  console.error('❌ FATAL: JWT_SECRET must be set in production');
+  process.exit(1);
+}
+
 export function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
   const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
@@ -37,6 +43,6 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
   }
 }
 
-export function signAuthToken(payload: Omit<AuthTokenPayload, 'iat' | 'exp'>, expiresIn = '1h') {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+export function signAuthToken(payload: Omit<AuthTokenPayload, 'iat' | 'exp'>, expiresIn: string = '1h'): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] });
 }
