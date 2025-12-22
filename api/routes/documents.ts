@@ -354,7 +354,7 @@ documentsRouter.get('/:employeeId/payslip/:period/pdf', async (req: Request, res
     const empResult = await query(
       `SELECT 
         em.id, em.full_name, em.employee_id, em.department, em.designation, em.email,
-        em.nric_encrypted, em.bank_account_no,
+        em.nric,
         sc.basic_salary, sc.marital_status, sc.children
        FROM employee_master em
        LEFT JOIN salary_config sc ON em.id = sc.employee_id AND sc.is_active = true
@@ -410,7 +410,7 @@ documentsRouter.get('/:employeeId/payslip/:period/pdf', async (req: Request, res
         },
         netPay,
         paymentDate: `${period}-25`,
-        bankAccount: emp.bank_account_no ? `****${emp.bank_account_no.slice(-4)}` : 'Not Set',
+        bankAccount: 'Not Set', // bank_account column not in schema
         generatedAt: new Date().toISOString(),
         companyName: 'Star Corporation Sdn Bhd',
         companyAddress: '123 Business Park, Kuala Lumpur, Malaysia',
@@ -472,17 +472,17 @@ documentsRouter.get('/:employeeId/ea-form/:year', async (req: Request, res: Resp
         employerNo: 'E1234567890',
         employerName: 'Star Corporation Sdn Bhd',
         employerAddress: '123 Business Park, Kuala Lumpur, 50450, Malaysia',
-        
+
         // Part B - Employee Details  
         employeeNo: emp.employee_id,
         employeeName: emp.full_name,
         icNo: emp.ic_no || 'Not Available',
         dateOfBirth: emp.date_of_birth,
-        
+
         // Part C - Employment Details
         category: emp.marital_status === 'married' ? 'Resident - Married' : 'Resident - Single',
         commencementDate: emp.hire_date,
-        
+
         // Part D - Remuneration
         salaryWages: annualSalary,
         bonus: 0,
@@ -492,18 +492,18 @@ documentsRouter.get('/:employeeId/ea-form/:year', async (req: Request, res: Resp
         gratuity: 0,
         otherPerquisites: 0,
         totalGrossRemuneration: annualSalary,
-        
+
         // Part E - Deductions
         epfContribution: annualEpf,
         socsoContribution: annualSocso,
         zakat: 0,
         totalDeductions: annualEpf + annualSocso,
-        
+
         // Part F - Tax
         pcbDeducted: annualPcb,
         cp38Deducted: 0,
         totalTaxDeducted: annualPcb,
-        
+
         // Metadata
         generatedAt: new Date().toISOString(),
         formNo: `EA-${year}-${emp.employee_id}`,
@@ -554,47 +554,47 @@ documentsRouter.post('/download-batch', async (req: Request, res: Response) => {
 // GET /api/documents/payslip/:id/download - Download Payslip PDF
 // ============================================================================
 documentsRouter.get('/payslip/:id/download', async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const { rows: items } = await query('SELECT * FROM payroll_items WHERE id = $1', [id]);
-      if (items.length === 0) {
-        return res.status(404).json({ success: false, message: 'Payslip not found' });
-      }
-      const payrollItem = items[0] as PayrollItem;
-  
-      const { rows: employees } = await query('SELECT * FROM employee_master WHERE id = $1', [payrollItem.employee_id]);
-      if (employees.length === 0) {
-          return res.status(404).json({ success: false, message: 'Employee not found' });
-      }
-      const employee = employees[0] as Employee;
-  
-      const pdfBuffer = await generatePayslipPDF(payrollItem, employee);
-  
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=payslip-${employee.employeeId}.pdf`);
-      res.send(pdfBuffer);
-  
-    } catch (err) {
-      console.error('Payslip download error:', err);
-      return res.status(500).json({ success: false, error: 'Internal Server Error' });
+  try {
+    const { id } = req.params;
+    const { rows: items } = await query('SELECT * FROM payroll_items WHERE id = $1', [id]);
+    if (items.length === 0) {
+      return res.status(404).json({ success: false, message: 'Payslip not found' });
     }
-  });
-  
-  
-  // ============================================================================
-  // GET /api/documents/ledger/:runId/download - Download Payroll Ledger PDF
-  // ============================================================================
-  documentsRouter.get('/ledger/:runId/download', async (req: Request, res: Response) => {
-    try {
-      const { runId } = req.params;
-      const pdfBuffer = await generatePayrollLedgerPDF(runId);
-  
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=payroll-ledger-${runId}.pdf`);
-      res.send(pdfBuffer);
-  
-    } catch (err) {
-      console.error('Ledger download error:', err);
-      return res.status(500).json({ success: false, error: 'Internal Server Error' });
+    const payrollItem = items[0] as PayrollItem;
+
+    const { rows: employees } = await query('SELECT * FROM employee_master WHERE id = $1', [(payrollItem as any).employee_id || payrollItem.employeeId]);
+    if (employees.length === 0) {
+      return res.status(404).json({ success: false, message: 'Employee not found' });
     }
-  });
+    const employee = employees[0] as Employee;
+
+    const pdfBuffer = await generatePayslipPDF(payrollItem, employee);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=payslip-${employee.employeeId}.pdf`);
+    res.send(pdfBuffer);
+
+  } catch (err) {
+    console.error('Payslip download error:', err);
+    return res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+
+// ============================================================================
+// GET /api/documents/ledger/:runId/download - Download Payroll Ledger PDF
+// ============================================================================
+documentsRouter.get('/ledger/:runId/download', async (req: Request, res: Response) => {
+  try {
+    const { runId } = req.params;
+    const pdfBuffer = await generatePayrollLedgerPDF(runId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=payroll-ledger-${runId}.pdf`);
+    res.send(pdfBuffer);
+
+  } catch (err) {
+    console.error('Ledger download error:', err);
+    return res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
