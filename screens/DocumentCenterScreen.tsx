@@ -261,8 +261,8 @@ const DocumentCenterScreen: React.FC<DocumentCenterScreenProps> = ({ onNavigate 
                         <div class="row"><span class="label">SOCSO</span><span class="value">RM ${data.deductions.socsoEmployee.toLocaleString()}</span></div>
                         <div class="row"><span class="label">EIS</span><span class="value">RM ${data.deductions.eisEmployee.toLocaleString()}</span></div>
                         <div class="row"><span class="label">PCB (Tax)</span><span class="value">RM ${data.deductions.pcb.toLocaleString()}</span></div>
-                        <div class="row total-row"><span class="label"><strong>Total Deductions</strong></span><span class="value"><strong>RM ${data.deductions.totalDeductions.toLocaleString()}</strong></span></div></div>
-                        <div class="net-pay"><strong>NET PAY: RM ${data.netPay.toLocaleString()}</strong></div>
+                        <div class="row total-row"><span class="label"><strong>Total Deductions</strong></span><span class="value"><strong>RM ${Number(data.deductions.totalDeductions).toFixed(2)}</strong></span></div></div>
+                        <div class="net-pay"><strong>NET PAY: RM ${Number(data.netPay).toFixed(2)}</strong></div>
                         <div class="footer">Generated: ${new Date().toLocaleDateString('en-MY')}</div>
                         </body></html>`;
                     const blob = new Blob([html], { type: 'text/html' });

@@ -87,6 +87,15 @@ documentsRouter.get('/employees', async (req: Request, res: Response) => {
       if (idx === 2) status = 'Generating';
       if (idx === 3) status = 'Pending';
 
+      // Calculate actual net pay using statutory deductions
+      const basicSalary = parseFloat(row.basicSalary) || 0;
+      const epf = Math.round(basicSalary * 0.11 * 100) / 100;
+      const socso = Math.min(Math.round(basicSalary * 0.005 * 100) / 100, 29.75);
+      const eis = Math.min(Math.round(basicSalary * 0.002 * 100) / 100, 12);
+      const pcb = Math.round(basicSalary * 0.05 * 100) / 100;
+      const totalDeductions = epf + socso + eis + pcb;
+      const netPay = Math.round((basicSalary - totalDeductions) * 100) / 100;
+
       return {
         id: `doc-${row.employeeId}`,
         employeeId: row.employeeId,
@@ -94,7 +103,7 @@ documentsRouter.get('/employees', async (req: Request, res: Response) => {
         employeeCode: row.employeeCode,
         department: row.department,
         avatarUrl: idx % 3 === 0 ? null : `https://placehold.co/100x100`,
-        netPay: row.basicSalary * 0.85, // Approximate after deductions
+        netPay,
         status,
         documentType: type as 'payslip' | 'ea-form',
         period: (period as string) || new Date().toISOString().slice(0, 7),
