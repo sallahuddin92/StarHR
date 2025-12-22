@@ -87,43 +87,45 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
 
-    useEffect(() => {
-        async function fetchAttendance() {
-            try {
-                setLoading(true);
-                const response = await api.attendance.getAll();
-                const rows = response.data || [];
-                const mapped: AttendanceRecord[] = rows.map((row: any, idx: number) => {
-                    const sysOT = safeNumber(row.ot_requested_hours);
-                    const verifiedOT = safeNumber(row.ot_approved_hours);
-                    const status = deriveStatus(row.raw_clock_out, sysOT, verifiedOT, row.ot_approval_status);
-                    const rawIn = formatTime(row.raw_clock_in);
-                    const rawOut = formatTime(row.raw_clock_out);
-                    return {
-                        id: row.id || `row-${idx}`,
-                        name: row.full_name || 'Unknown',
-                        empId: row.emp_code || row.employee_id || 'N/A',
-                        avatarUrl: avatarUrl(idx),
-                        date: formatDate(row.attendance_date),
-                        rawTime: `${rawIn} – ${rawOut}`,
-                        sysOT,
-                        verifiedOT,
-                        initialVerifiedOT: verifiedOT,
-                        status,
-                    };
-                });
-                setRecords(mapped);
 
-                const pending = mapped.filter(r => r.status === 'PENDING_REVIEW').length;
-                const approved = mapped.filter(r => r.status === 'NORMAL').length;
-                const errors = mapped.filter(r => r.status === 'MISSING_PUNCH' || r.status === 'OT_REJECTED').length;
-                setStats({ pending, approved, errors });
-            } catch (err: any) {
-                setError(err.message || 'Failed to load attendance data');
-            } finally {
-                setLoading(false);
-            }
+    const fetchAttendance = async () => {
+        try {
+            setLoading(true);
+            const response = await api.attendance.getAll();
+            const rows = response.data || [];
+            const mapped: AttendanceRecord[] = rows.map((row: any, idx: number) => {
+                const sysOT = safeNumber(row.ot_requested_hours);
+                const verifiedOT = safeNumber(row.ot_approved_hours);
+                const status = deriveStatus(row.raw_clock_out, sysOT, verifiedOT, row.ot_approval_status);
+                const rawIn = formatTime(row.raw_clock_in);
+                const rawOut = formatTime(row.raw_clock_out);
+                return {
+                    id: row.id || `row-${idx}`,
+                    name: row.full_name || 'Unknown',
+                    empId: row.emp_code || row.employee_id || 'N/A',
+                    avatarUrl: avatarUrl(idx),
+                    date: formatDate(row.attendance_date),
+                    rawTime: `${rawIn} – ${rawOut}`,
+                    sysOT,
+                    verifiedOT,
+                    initialVerifiedOT: verifiedOT,
+                    status,
+                };
+            });
+            setRecords(mapped);
+
+            const pending = mapped.filter(r => r.status === 'PENDING_REVIEW').length;
+            const approved = mapped.filter(r => r.status === 'NORMAL').length;
+            const errors = mapped.filter(r => r.status === 'MISSING_PUNCH' || r.status === 'OT_REJECTED').length;
+            setStats({ pending, approved, errors });
+        } catch (err: any) {
+            setError(err.message || 'Failed to load attendance data');
+        } finally {
+            setLoading(false);
         }
+    };
+
+    useEffect(() => {
         fetchAttendance();
     }, []);
 
@@ -206,18 +208,18 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
             if (!record) continue;
 
             try {
-                await api.attendance.approveOT(id, record.verifiedOT);
+                // Use sysOT (requested hours) if verifiedOT is 0 (for pending records)
+                const hoursToApprove = record.verifiedOT > 0 ? record.verifiedOT : record.sysOT;
+                await api.attendance.approveOT(id, hoursToApprove);
                 successCount++;
             } catch {
                 failCount++;
             }
         }
 
-        // Refresh data after batch operation
+        // Refresh data from server after batch operation
         if (successCount > 0) {
-            setRecords(prev => prev.map(r =>
-                selectedIds.has(r.id) ? { ...r, status: 'NORMAL' as AttendanceStatus, initialVerifiedOT: r.verifiedOT } : r
-            ));
+            await fetchAttendance();
             setSelectedIds(new Set());
         }
 
