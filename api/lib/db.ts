@@ -22,29 +22,29 @@ const {
 const pool = new Pool(
   DATABASE_URL
     ? {
-        connectionString: DATABASE_URL,
-        ssl:
-          process.env.NODE_ENV === 'production' || PGSSLMODE === 'require'
-            ? { rejectUnauthorized: false }
-            : false,
-        max: PGPOOL_MAX ? Number(PGPOOL_MAX) : 20,
-        idleTimeoutMillis: PGPOOL_IDLE ? Number(PGPOOL_IDLE) : 30_000,
-        connectionTimeoutMillis: PGPOOL_TIMEOUT ? Number(PGPOOL_TIMEOUT) : 2_000,
-      }
+      connectionString: DATABASE_URL,
+      ssl:
+        process.env.NODE_ENV === 'production' || PGSSLMODE === 'require'
+          ? { rejectUnauthorized: false }
+          : false,
+      max: PGPOOL_MAX ? Number(PGPOOL_MAX) : 20,
+      idleTimeoutMillis: PGPOOL_IDLE ? Number(PGPOOL_IDLE) : 30_000,
+      connectionTimeoutMillis: PGPOOL_TIMEOUT ? Number(PGPOOL_TIMEOUT) : 2_000,
+    }
     : {
-        host: PGHOST || 'localhost',
-        port: PGPORT ? Number(PGPORT) : 5432,
-        user: PGUSER || 'postgres',
-        password: PGPASSWORD || 'postgres',
-        database: PGDATABASE || 'hr_portal',
-        ssl:
-          process.env.NODE_ENV === 'production' || PGSSLMODE === 'require'
-            ? { rejectUnauthorized: false }
-            : false,
-        max: PGPOOL_MAX ? Number(PGPOOL_MAX) : 20,
-        idleTimeoutMillis: PGPOOL_IDLE ? Number(PGPOOL_IDLE) : 30_000,
-        connectionTimeoutMillis: PGPOOL_TIMEOUT ? Number(PGPOOL_TIMEOUT) : 2_000,
-      }
+      host: PGHOST || 'localhost',
+      port: PGPORT ? Number(PGPORT) : 5432,
+      user: PGUSER || 'postgres',
+      password: PGPASSWORD || 'postgres123',
+      database: PGDATABASE || 'hr_portal',
+      ssl:
+        process.env.NODE_ENV === 'production' || PGSSLMODE === 'require'
+          ? { rejectUnauthorized: false }
+          : false,
+      max: PGPOOL_MAX ? Number(PGPOOL_MAX) : 20,
+      idleTimeoutMillis: PGPOOL_IDLE ? Number(PGPOOL_IDLE) : 30_000,
+      connectionTimeoutMillis: PGPOOL_TIMEOUT ? Number(PGPOOL_TIMEOUT) : 2_000,
+    }
 );
 
 // Pool error handler
@@ -57,7 +57,7 @@ pool.on('error', (err) => {
  * Execute a query with parameters
  */
 export async function query<T = any>(
-  text: string, 
+  text: string,
   params?: any[]
 ): Promise<QueryResult<T>> {
   const start = Date.now();

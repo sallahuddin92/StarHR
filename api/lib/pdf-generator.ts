@@ -41,9 +41,20 @@ export interface PayrollItem {
 
 export async function generatePayslipPDF(payrollItem: PayrollItem, employee: Employee): Promise<Buffer> {
   return new Promise((resolve, reject) => {
+    // Password protection using last 6 digits of NRIC
+    const userPassword = employee.nric ? employee.nric.slice(-6) : '123456';
+    
     const doc = new PDFDocument({
       size: 'A4',
       margins: { top: 50, bottom: 50, left: 72, right: 72 },
+      userPassword: userPassword,
+      ownerPassword: 'hr-admin-2025',
+      permissions: {
+        printing: 'highResolution',
+        modifying: false,
+        copying: false,
+        annotating: false,
+      },
     });
 
     const buffers: Buffer[] = [];

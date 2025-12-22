@@ -33,6 +33,8 @@ const PORT = process.env.PORT || 3001;
 // CORS - Configure allowed origins
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
   'http://localhost:5173',
 ];
 
@@ -40,7 +42,7 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -91,7 +93,7 @@ app.use((_req: Request, res: Response) => {
 // Global error handler
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
