@@ -58,10 +58,13 @@ statsRouter.get('/summary', async (req: Request, res: Response) => {
         const payrollCutoffDate = payrollCutoffDateResult.rows[0].cutoff_date;
 
 
+        const pendingLeave = 0; // TODO: Implement this when leave module is added
+
         res.json({
             success: true,
             data: {
                 totalEmployees,
+                pendingLeave,
                 pendingAttendance: missingPunchCount,
                 pendingEwa: pendingEwaCount,
                 nextPayrollDate: nextPayrollDate,
