@@ -19,7 +19,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         try {
             // The api.auth.login method handles token storage automatically
             const response = await api.auth.login({ identifier, password });
-            
+
             if (response.token) {
                 // Store user info for UI purposes
                 localStorage.setItem('user', JSON.stringify(response.user));
@@ -28,8 +28,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 throw new Error('Login failed - no token received');
             }
         } catch (err) {
-            const message = err instanceof ApiError ? err.message : 
-                           err instanceof Error ? err.message : 'Login failed';
+            const message = err instanceof ApiError ? err.message :
+                err instanceof Error ? err.message : 'Login failed';
             setError(message);
         } finally {
             setLoading(false);
@@ -96,10 +96,21 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 </form>
 
                 <div className="mt-8 p-4 rounded-xl bg-[#f8f8f5] dark:bg-[#23220f] border border-[#e6e6db] dark:border-[#3a3a30]">
-                    <p className="text-xs text-[#8c8b5f] mb-2 font-medium">Demo Credentials:</p>
-                    <p className="text-sm text-[#181811] dark:text-white font-mono">
-                        ID: <span className="select-all">EMP001</span> | Password: <span className="select-all">password123</span>
-                    </p>
+                    <p className="text-xs text-[#8c8b5f] mb-3 font-medium uppercase tracking-wider">Available Demo Accounts</p>
+                    <div className="space-y-2 text-xs">
+                        <div className="flex justify-between items-center p-2 rounded hover:bg-white dark:hover:bg-slate-800 cursor-pointer" onClick={() => { setIdentifier('EMP-001'); setPassword('password123'); }}>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">HR ADMIN</span>
+                            <span className="font-mono text-slate-500">EMP-001 / password123</span>
+                        </div>
+                        <div className="flex justify-between items-center p-2 rounded hover:bg-white dark:hover:bg-slate-800 cursor-pointer" onClick={() => { setIdentifier('EMP-004'); setPassword('password123'); }}>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">MANAGER</span>
+                            <span className="font-mono text-slate-500">EMP-004 / password123</span>
+                        </div>
+                        <div className="flex justify-between items-center p-2 rounded hover:bg-white dark:hover:bg-slate-800 cursor-pointer" onClick={() => { setIdentifier('EMP-002'); setPassword('password123'); }}>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">WORKER</span>
+                            <span className="font-mono text-slate-500">EMP-002 / password123</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

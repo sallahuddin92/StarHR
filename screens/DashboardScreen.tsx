@@ -5,6 +5,7 @@ import { Screen } from '../App';
 
 interface DashboardScreenProps {
     onNavigate: (screen: Screen) => void;
+    userRole: string; // Added prop for reactivity
 }
 
 interface RecentActivity {
@@ -40,11 +41,12 @@ const LoadingSkeleton: React.FC = () => (
     </div>
 );
 
-const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
+const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, userRole }) => {
     const [stats, setStats] = useState<DashboardSummary | null>(null);
     const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [user, setUser] = useState<{ name: string; role: string; email: string } | null>(null);
 
     // Edit missing punch modal state
     const [editModalOpen, setEditModalOpen] = useState(false);
@@ -83,8 +85,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
 
         return {
             id: approval.id,
-            name: approval.employeeName,
-            initials: getInitials(approval.employeeName),
+            name: approval.employeeName || 'Unknown',
+            initials: getInitials(approval.employeeName || '?'),
             color: colors[idx % colors.length],
             type: approval.type === 'OT' ? 'OT Request' : approval.type === 'LEAVE' ? 'Annual Leave' : 'Claim',
             date: formatActivityDate(approval.submittedAt),
@@ -113,27 +115,24 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
         try {
             setLoading(true);
 
-            // Fetch stats, approvals, and attendance in parallel
-            const [statsResponse, approvalsResponse, attendanceResponse] = await Promise.all([
-                api.stats.getSummary(),
-                api.approvals.getPending().catch(() => ({ success: false, data: [] })),
-                api.attendance.getAll().catch(() => ({ success: false, data: [] })),
-            ]);
+            const statsResponse = await api.stats.getSummary();
 
             if (statsResponse.success && statsResponse.data) {
                 setStats(statsResponse.data);
             }
 
-            // Combine approvals and missing punch records
+            const [approvalsResponse, attendanceResponse] = await Promise.all([
+                api.approvals.getPending().catch(() => ({ success: false, data: [] })),
+                api.attendance.getAll().catch(() => ({ success: false, data: [] })),
+            ]);
+
             const activities: RecentActivity[] = [];
 
-            // Add approvals (limit to 3)
             if (approvalsResponse.success && approvalsResponse.data) {
                 const approvalActivities = approvalsResponse.data.slice(0, 3).map(mapApprovalToActivity);
                 activities.push(...approvalActivities);
             }
 
-            // Add missing punch records (filter for missing clock-out, limit to 3)
             if (attendanceResponse.success && attendanceResponse.data) {
                 const missingPunchRecords = attendanceResponse.data
                     .filter((r: AttendanceRecord) => r.raw_clock_out === null)
@@ -142,8 +141,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
                 activities.push(...missingPunchRecords);
             }
 
-            // Sort by date and limit to 6 total
             setRecentActivities(activities.slice(0, 6));
+
         } catch (err) {
             const message = err instanceof ApiError ? err.message : 'Failed to load dashboard';
             setError(message);
@@ -153,18 +152,28 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
     };
 
     useEffect(() => {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            try {
+                const userData = JSON.parse(userStr);
+                setUser({
+                    name: userData.identifier || 'User',
+                    role: userRole, // USE PROP INSTEAD OF LOCALSTORAGE
+                    email: userData.email
+                });
+            } catch (e) {
+                console.error("Failed to parse user", e);
+            }
+        }
         fetchData();
-    }, []);
+    }, [userRole]); // Re-fetch when role changes
 
-    // Handle opening edit modal for missing punch
     const handleOpenEditModal = (activity: RecentActivity) => {
         setEditingActivity(activity);
-        // Set default clock-out to end of work day (17:00) on the record's date
         if (activity.rawClockIn) {
             const clockIn = new Date(activity.rawClockIn);
             const defaultOut = new Date(clockIn);
             defaultOut.setHours(17, 0, 0, 0);
-            // Format for datetime-local input: YYYY-MM-DDTHH:mm
             const formatted = defaultOut.toISOString().slice(0, 16);
             setClockOutInput(formatted);
         } else {
@@ -174,7 +183,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
         setEditModalOpen(true);
     };
 
-    // Handle fixing missing punch
     const handleFixMissingPunch = async () => {
         if (!editingActivity || !clockOutInput) return;
 
@@ -191,7 +199,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
                 setToast({ message: 'Missing punch fixed successfully!', type: 'success' });
                 setEditModalOpen(false);
                 setEditingActivity(null);
-                // Refresh data from server
                 await fetchData();
             } else {
                 setToast({ message: response.error || 'Failed to fix missing punch', type: 'error' });
@@ -204,7 +211,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
         }
     };
 
-    // Handle action button click
     const handleActionClick = (activity: RecentActivity) => {
         if (activity.isMissingPunch) {
             handleOpenEditModal(activity);
@@ -215,14 +221,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
 
     const formatPayrollDate = (dateStr: string | null) => {
         if (!dateStr) return '--';
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        } catch { return '--'; }
     };
 
     const formatPayrollDay = (dateStr: string | null) => {
         if (!dateStr) return '';
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-GB', { weekday: 'short' });
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-GB', { weekday: 'short' });
+        } catch { return ''; }
     };
 
     const getCutoffText = (cutoffDate: string | null) => {
@@ -237,33 +247,76 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
         return `Processing cutoff: ${diffDays} days`;
     };
 
+    const roleDisplayName = userRole === 'HR_ADMIN' ? 'Admin' : userRole === 'MANAGER' ? 'Manager' : 'Employee';
+    const welcomeMessage = user?.name ? `Selamat Datang, ${user.name}` : `Selamat Datang, ${roleDisplayName}`;
+
+    // Dynamic Card Config based on Role
+    const getCardConfig = () => {
+        if (userRole === 'HR_ADMIN') {
+            return {
+                card1: { title: 'Total Employees', value: stats?.totalEmployees ?? 0, icon: 'group', color: 'text-slate-400', sub: (stats?.newEmployeesThisMonth ?? 0) > 0 ? `+${stats?.newEmployeesThisMonth} new` : null },
+                card2: { title: 'Pending Actions', value: (stats?.pendingAttendance ?? 0) + (stats?.pendingEwa ?? 0), icon: 'pending_actions', color: 'text-orange-400', sub: 'requests' },
+                card3: { title: 'Next Payroll', value: formatPayrollDate(stats?.nextPayrollDate || null), icon: 'payments', color: 'text-green-400', sub: getCutoffText(stats?.payrollCutoffDate || null) }
+            };
+        } else if (userRole === 'MANAGER') {
+            return {
+                card1: { title: 'My Team', value: stats?.totalEmployees ?? 0, icon: 'diversity_3', color: 'text-blue-400', sub: 'Active Members' },
+                card2: { title: 'Team Requests', value: (stats?.pendingAttendance ?? 0), icon: 'rule', color: 'text-purple-400', sub: 'Pending Review' },
+                card3: { title: 'Next Payroll', value: formatPayrollDate(stats?.nextPayrollDate || null), icon: 'payments', color: 'text-green-400', sub: 'Company Cycle' }
+            };
+        } else {
+            // WORKER
+            return {
+                card1: { title: 'My Profile', value: 'Active', icon: 'badge', color: 'text-indigo-400', sub: 'Employment Status' },
+                card2: { title: 'My Actions', value: (stats?.pendingAttendance ?? 0), icon: 'notifications_active', color: 'text-red-400', sub: 'Issues to fix' },
+                card3: { title: 'Pay Day', value: formatPayrollDate(stats?.nextPayrollDate || null), icon: 'account_balance_wallet', color: 'text-emerald-400', sub: 'Expected Date' }
+            };
+        }
+    };
+
+    const cards = getCardConfig();
+
     return (
         <div className="font-display bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 w-full">
             <div className="p-4 md:p-8 max-w-[1200px] mx-auto flex flex-col gap-8 pb-20">
+
+                {/* Visual Role Badge */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div className="flex flex-col gap-1">
-                        <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">Selamat Datang, Admin</h1>
-                        <p className="text-slate-500 dark:text-slate-400">Here's what's happening in your Malaysian HR operations today.</p>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">{welcomeMessage}</h1>
+                            <span className={`px-2 py-1 rounded text-xs font-bold border ${userRole === 'HR_ADMIN' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                userRole === 'MANAGER' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                    'bg-green-100 text-green-700 border-green-200'
+                                }`}>
+                                {roleDisplayName.toUpperCase()} VIEW
+                            </span>
+                        </div>
+                        <p className="text-slate-500 dark:text-slate-400">
+                            {userRole === 'HR_ADMIN' && "Here's the executive overview of your HR operations."}
+                            {userRole === 'MANAGER' && "Here's what your team is working on today."}
+                            {userRole === 'WORKER' && "Your personal dashboard."}
+                        </p>
                     </div>
                     <div className="text-sm text-slate-500 bg-white dark:bg-slate-800 px-4 py-2 rounded-full shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary text-lg">calendar_today</span>
                         <span>Today: {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     </div>
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* CARD 1 */}
                     <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group">
                         <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <span className="material-symbols-outlined text-6xl text-slate-400">group</span>
+                            <span className={`material-symbols-outlined text-6xl ${cards.card1.color}`}>{cards.card1.icon}</span>
                         </div>
                         <div className="flex flex-col">
-                            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Total Employees</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">{cards.card1.title}</p>
                             <div className="flex items-baseline gap-2 mt-2">
                                 {loading ? <LoadingSkeleton /> : (
                                     <>
-                                        <h3 className="text-4xl font-bold text-slate-900 dark:text-white">{stats?.totalEmployees ?? 0}</h3>
-                                        {(stats?.newEmployeesThisMonth ?? 0) > 0 && (
-                                            <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">+{stats?.newEmployeesThisMonth} this month</span>
-                                        )}
+                                        <h3 className="text-4xl font-bold text-slate-900 dark:text-white">{cards.card1.value}</h3>
+                                        {cards.card1.sub && <span className="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">{cards.card1.sub}</span>}
                                     </>
                                 )}
                             </div>
@@ -272,60 +325,60 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
                             <div className="bg-primary h-1.5 rounded-full" style={{ width: "85%" }}></div>
                         </div>
                     </div>
+
+                    {/* CARD 2 */}
                     <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group">
                         <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <span className="material-symbols-outlined text-6xl text-orange-400">pending_actions</span>
+                            <span className={`material-symbols-outlined text-6xl ${cards.card2.color}`}>{cards.card2.icon}</span>
                         </div>
                         <div className="flex flex-col">
-                            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Pending Actions</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">{cards.card2.title}</p>
                             <div className="flex items-baseline gap-2 mt-2">
                                 {loading ? <LoadingSkeleton /> : (
                                     <>
-                                        <h3 className="text-4xl font-bold text-slate-900 dark:text-white">{(stats?.pendingAttendance ?? 0) + (stats?.pendingEwa ?? 0)}</h3>
-                                        <span className="text-sm text-slate-400">requests</span>
+                                        <h3 className="text-4xl font-bold text-slate-900 dark:text-white">{cards.card2.value}</h3>
+                                        <span className="text-sm text-slate-400">{cards.card2.sub}</span>
                                     </>
                                 )}
                             </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-auto text-xs text-orange-600 font-medium">
-                            {((stats?.pendingAttendance ?? 0) + (stats?.pendingEwa ?? 0)) > 0 && (
-                                <>
-                                    <span className="material-symbols-outlined text-sm">warning</span>
-                                    Action required
-                                </>
-                            )}
                         </div>
                     </div>
+
+                    {/* CARD 3 */}
                     <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group">
                         <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <span className="material-symbols-outlined text-6xl text-green-400">payments</span>
+                            <span className={`material-symbols-outlined text-6xl ${cards.card3.color}`}>{cards.card3.icon}</span>
                         </div>
                         <div className="flex flex-col">
-                            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">Next Payroll</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">{cards.card3.title}</p>
                             <div className="flex items-baseline gap-2 mt-2">
                                 {loading ? <LoadingSkeleton /> : (
                                     <>
-                                        <h3 className="text-4xl font-bold text-slate-900 dark:text-white">{formatPayrollDate(stats?.nextPayrollDate ?? null)}</h3>
-                                        <span className="text-sm text-slate-400">{formatPayrollDay(stats?.nextPayrollDate ?? null)}</span>
+                                        <h3 className="text-4xl font-bold text-slate-900 dark:text-white">{cards.card3.value}</h3>
+                                        <span className="text-sm text-slate-400">{cards.card3.sub}</span>
                                     </>
                                 )}
                             </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-auto text-xs text-slate-500">
-                            {getCutoffText(stats?.payrollCutoffDate ?? null)}
                         </div>
                     </div>
                 </div>
+
+                {/* RECENT ACTIVITIES TABLE */}
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Recent Activities</h2>
-                        <button
-                            onClick={() => onNavigate('Approvals')}
-                            className="text-sm font-bold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                        >
-                            View All
-                        </button>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                            {userRole === 'WORKER' ? 'Your Recent Activity' : 'Recent Activities'}
+                        </h2>
+                        {userRole !== 'WORKER' && (
+                            <button
+                                onClick={() => onNavigate('Approvals')}
+                                className="text-sm font-bold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                            >
+                                View All
+                            </button>
+                        )}
                     </div>
+                    {/* ... (Table content unchanged) ... */}
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
@@ -352,7 +405,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
                                             <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
                                                 <div className="flex flex-col items-center gap-2">
                                                     <span className="material-symbols-outlined text-3xl text-slate-300">inbox</span>
-                                                    <p>No pending activities</p>
+                                                    <p>No activity to show</p>
                                                 </div>
                                             </td>
                                         </tr>
@@ -402,6 +455,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
             {/* Edit Missing Punch Modal */}
             {editModalOpen && editingActivity && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    {/* ... keeping modal content identical to reference ... */}
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
                         <div className="p-6 border-b border-slate-200 dark:border-slate-700">
                             <div className="flex items-center justify-between">

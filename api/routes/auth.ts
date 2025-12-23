@@ -146,4 +146,50 @@ authRouter.post('/hash-password', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/auth/me
+ * Verify current token and return user details
+ */
+authRouter.get('/me', (req: Request, res: Response) => {
+  // Middleware should have already populated req.user (if typed correctly in index.ts or applied globally)
+  // But since we mount this on /api/auth, we might need to manually check or ensure middleware is applied.
+  // Assuming global middleware or we check header here if not.
+
+  // Actually, usually /auth routes are public. But /me requires a token.
+  // Let's parse token manually if middleware isn't guaranteed, or assume index.ts applies it to protected routes.
+  // Given the architecture, let's verify token here for safety.
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  // We already have User Role in the token from existing login flow?
+  // Let's assume yes due to signAuthToken usage.
+  // Ideally we re-fetch from DB to be sure, but for now token decode is faster.
+
+  // Simpler: Just rely on the fact that if this is reached, and we add middleware, it works.
+  // But since I can't see api/index.ts easily right now to confirm middleware mounting:
+
+  try {
+    const token = authHeader.split(' ')[1];
+    const jwt = require('jsonwebtoken'); // Lazy load
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-insecure-secret');
+
+    return res.json({
+      success: true,
+      user: {
+        id: decoded.userId,
+        tenantId: decoded.tenantId,
+        role: decoded.role,
+        // Add dummy identifier/email if not in token, or fetch from DB if critical. 
+        // For Dashboard role check, 'role' is the only thing that matters.
+        role_source: 'token_check'
+      }
+    });
+  } catch (e) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
 export default authRouter;

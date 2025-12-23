@@ -426,21 +426,30 @@ export const api = {
         body: JSON.stringify(credentials),
       });
 
-      // Auto-store token on successful login
+      // Auto-store token and user on successful login
       if (response.success && response.data?.token) {
         setToken(response.data.token);
+        if (response.data.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
       } else if ((response as unknown as LoginResponse).token) {
         // Handle case where token is at root level
-        setToken((response as unknown as LoginResponse).token);
+        const rootData = response as unknown as LoginResponse;
+        setToken(rootData.token);
+        if (rootData.user) {
+          localStorage.setItem('user', JSON.stringify(rootData.user));
+        }
       }
 
       return response as unknown as LoginResponse;
     },
 
     /**
-     * Logout - clear token and redirect
+     * Logout - clear token and user, then redirect
      */
     logout(): void {
+      removeToken();
+      localStorage.removeItem('user');
       redirectToLogin();
     },
 
@@ -449,6 +458,42 @@ export const api = {
      */
     isAuthenticated(): boolean {
       return !!getToken();
+    },
+
+    /**
+     * Get current user details from server (sync session)
+     */
+    async me(): Promise<LoginResponse['user'] | null> {
+      try {
+        const response = await request<{ user: LoginResponse['user'] }>('/api/auth/me');
+
+        // The /me endpoint returns { success, user } at root level
+        // But request() might wrap it, so check both patterns
+        const user = response.data?.user || (response as any).user;
+
+        if (user && user.role) {
+          // Update local storage with fresh data
+          const merged = { ...this.getUser(), ...user };
+          localStorage.setItem('user', JSON.stringify(merged));
+          return merged;
+        }
+        return null;
+      } catch (e) {
+        console.error('[api.auth.me] Error:', e);
+        return null;
+      }
+    },
+
+    /**
+     * Get current user from storage
+     */
+    getUser(): LoginResponse['user'] | null {
+      try {
+        const str = localStorage.getItem('user');
+        return str ? JSON.parse(str) : null;
+      } catch {
+        return null;
+      }
     },
 
     /**
