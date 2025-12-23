@@ -17,6 +17,7 @@ interface AttendanceRecord {
     avatarUrl: string;
     date: string;
     rawTime: string;
+    rawClockIn: string | null;
     sysOT: number;
     verifiedOT: number;
     initialVerifiedOT: number;
@@ -87,6 +88,12 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
 
+    // Edit missing punch modal state
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+    const [clockOutInput, setClockOutInput] = useState('');
+    const [remarksInput, setRemarksInput] = useState('');
+
 
     const fetchAttendance = async () => {
         try {
@@ -106,6 +113,7 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                     avatarUrl: avatarUrl(idx),
                     date: formatDate(row.attendance_date),
                     rawTime: `${rawIn} – ${rawOut}`,
+                    rawClockIn: row.raw_clock_in,
                     sysOT,
                     verifiedOT,
                     initialVerifiedOT: verifiedOT,
@@ -238,6 +246,54 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
         ));
         setToast({ message: 'Changes reset', type: 'success' });
         setTimeout(() => setToast(null), 3000);
+    };
+
+    // Handle opening edit modal for missing punch
+    const handleOpenEditModal = (record: AttendanceRecord) => {
+        setEditingRecord(record);
+        // Set default clock-out to end of work day (17:00) on the record's date
+        if (record.rawClockIn) {
+            const clockIn = new Date(record.rawClockIn);
+            const defaultOut = new Date(clockIn);
+            defaultOut.setHours(17, 0, 0, 0);
+            // Format for datetime-local input: YYYY-MM-DDTHH:mm
+            const formatted = defaultOut.toISOString().slice(0, 16);
+            setClockOutInput(formatted);
+        } else {
+            setClockOutInput('');
+        }
+        setRemarksInput('');
+        setEditModalOpen(true);
+    };
+
+    // Handle fixing missing punch
+    const handleFixMissingPunch = async () => {
+        if (!editingRecord || !clockOutInput) return;
+
+        setActionLoading(true);
+        try {
+            const clockOutTime = new Date(clockOutInput).toISOString();
+            const response = await api.attendance.fixMissingPunch(
+                editingRecord.id,
+                clockOutTime,
+                remarksInput || undefined
+            );
+
+            if (response.success) {
+                setToast({ message: 'Missing punch fixed successfully!', type: 'success' });
+                setEditModalOpen(false);
+                setEditingRecord(null);
+                // Refresh data from server
+                await fetchAttendance();
+            } else {
+                setToast({ message: response.error || 'Failed to fix missing punch', type: 'error' });
+            }
+        } catch (err: any) {
+            setToast({ message: err.message || 'Failed to fix missing punch', type: 'error' });
+        } finally {
+            setActionLoading(false);
+            setTimeout(() => setToast(null), 3000);
+        }
     };
 
     if (loading) {
@@ -394,7 +450,7 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                                         </tr>
                                     ) : filteredRecords.map(rec => {
                                         const isEdited = rec.verifiedOT !== rec.initialVerifiedOT;
-                                        const rowClasses = rec.status === 'MISSING_PUNCH' ? 'bg-red-50/30 dark:bg-red-900/5' : 'group hover:bg-[#fafaf7] dark:hover:bg-[#323229]';
+                                        const rowClasses = rec.status === 'MISSING_PUNCH' ? 'group bg-red-50/30 dark:bg-red-900/5 hover:bg-red-100/50 dark:hover:bg-red-900/10' : 'group hover:bg-[#fafaf7] dark:hover:bg-[#323229]';
 
                                         return (
                                             <tr key={rec.id} className={`${rowClasses} transition-colors`}>
@@ -450,8 +506,9 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                                                             </>
                                                         ) : rec.status === 'MISSING_PUNCH' ? (
                                                             <button
+                                                                onClick={() => handleOpenEditModal(rec)}
                                                                 className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-primary"
-                                                                title="Fix Record (Coming Soon)"
+                                                                title="Fix Missing Punch"
                                                             >
                                                                 <span className="material-symbols-outlined text-[20px] fill">edit</span>
                                                             </button>
@@ -516,6 +573,79 @@ const AttendanceInterventionScreen: React.FC<AttendanceInterventionScreenProps> 
                                     <span className="material-symbols-outlined text-[18px]">done_all</span>
                                 )}
                                 Batch Approve
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Missing Punch Modal */}
+            {editModalOpen && editingRecord && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+                        <div className="p-6 border-b border-[#e6e6db] dark:border-[#3a3a30]">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-[#181811] dark:text-white">Fix Missing Punch</h2>
+                                <button
+                                    onClick={() => { setEditModalOpen(false); setEditingRecord(null); }}
+                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+                                >
+                                    <span className="material-symbols-outlined text-[#8c8b5f]">close</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="flex items-center gap-3 p-3 bg-[#f8f8f5] dark:bg-[#23220f] rounded-xl">
+                                <img src={editingRecord.avatarUrl} className="h-10 w-10 rounded-full object-cover border border-gray-200" alt={editingRecord.name} />
+                                <div>
+                                    <p className="font-bold text-[#181811] dark:text-white">{editingRecord.name}</p>
+                                    <p className="text-xs text-[#8c8b5f]">ID: {editingRecord.empId} • {editingRecord.date}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-[#181811] dark:text-white">Clock In</label>
+                                <p className="text-[#181811] dark:text-gray-200 font-mono bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg">
+                                    {editingRecord.rawClockIn ? formatTime(editingRecord.rawClockIn) : '--:--'}
+                                </p>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-[#181811] dark:text-white">Clock Out Time *</label>
+                                <input
+                                    type="datetime-local"
+                                    value={clockOutInput}
+                                    onChange={(e) => setClockOutInput(e.target.value)}
+                                    className="w-full h-10 px-3 rounded-lg border border-[#e6e6db] dark:border-[#3a3a30] bg-white dark:bg-surface-dark text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-[#181811] dark:text-white">Remarks (Optional)</label>
+                                <textarea
+                                    value={remarksInput}
+                                    onChange={(e) => setRemarksInput(e.target.value)}
+                                    placeholder="e.g., Confirmed with employee"
+                                    rows={2}
+                                    className="w-full px-3 py-2 rounded-lg border border-[#e6e6db] dark:border-[#3a3a30] bg-white dark:bg-surface-dark text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="p-6 border-t border-[#e6e6db] dark:border-[#3a3a30] flex gap-3">
+                            <button
+                                onClick={() => { setEditModalOpen(false); setEditingRecord(null); }}
+                                className="flex-1 h-10 rounded-full border border-[#e6e6db] dark:border-[#3a3a30] hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-[#181811] dark:text-white transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleFixMissingPunch}
+                                disabled={actionLoading || !clockOutInput}
+                                className="flex-1 h-10 rounded-full bg-primary hover:bg-[#eae605] text-black font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {actionLoading ? (
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent"></div>
+                                ) : (
+                                    <span className="material-symbols-outlined text-[18px]">check</span>
+                                )}
+                                Save
                             </button>
                         </div>
                     </div>

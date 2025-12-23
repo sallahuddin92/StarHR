@@ -108,7 +108,7 @@ approvalsRouter.get('/pending', async (req: Request, res: Response) => {
         attendanceDate: row.attendance_date,
         clockIn: row.raw_clock_in,
         clockOut: row.raw_clock_out,
-        requestedHours: row.requestedHours,
+        requestedHours: Number(row.requestedHours || 0),
         notes: row.notes,
       },
     }));
@@ -185,8 +185,8 @@ approvalsRouter.get('/:id', async (req: Request, res: Response) => {
         attendanceDate: row.attendance_date,
         clockIn: row.raw_clock_in,
         clockOut: row.raw_clock_out,
-        requestedHours: row.requestedHours,
-        approvedHours: row.approvedHours,
+        requestedHours: Number(row.requestedHours || 0),
+        approvedHours: Number(row.approvedHours || 0),
         notes: row.notes,
         updatedAt: row.updated_at,
       },
@@ -213,7 +213,7 @@ approvalsRouter.put('/:id/approve', async (req: Request, res: Response) => {
 
     const { id } = req.params;
     const validation = ApproveRequestSchema.safeParse(req.body);
-    
+
     if (!validation.success) {
       return res.status(400).json({
         success: false,
@@ -273,7 +273,7 @@ approvalsRouter.put('/:id/reject', async (req: Request, res: Response) => {
 
     const { id } = req.params;
     const validation = RejectRequestSchema.safeParse(req.body);
-    
+
     if (!validation.success) {
       return res.status(400).json({
         success: false,

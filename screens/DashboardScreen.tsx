@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { api, DashboardSummary, ApiError, ApprovalRequest } from '../src/lib/api';
+import { api, DashboardSummary, ApiError, ApprovalRequest, AttendanceRecord } from '../src/lib/api';
 import { Screen } from '../App';
 
 interface DashboardScreenProps {
@@ -14,8 +14,10 @@ interface RecentActivity {
     color: string;
     type: string;
     date: string;
-    status: 'Pending' | 'Approved' | 'Rejected';
+    status: 'Pending' | 'Approved' | 'Rejected' | 'MissingPunch';
     actionIcon: string;
+    isMissingPunch?: boolean;
+    rawClockIn?: string;
 }
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
@@ -25,6 +27,9 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     }
     if (status === 'Rejected') {
         return <span className={`${baseClasses} bg-red-100 text-red-700`}>Rejected</span>;
+    }
+    if (status === 'MissingPunch') {
+        return <span className={`${baseClasses} bg-red-100 text-red-700`}>Missing Punch</span>;
     }
     return <span className={`${baseClasses} bg-green-100 text-green-700`}>Approved</span>;
 };
@@ -41,6 +46,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Edit missing punch modal state
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingActivity, setEditingActivity] = useState<RecentActivity | null>(null);
+    const [clockOutInput, setClockOutInput] = useState('');
+    const [remarksInput, setRemarksInput] = useState('');
+    const [actionLoading, setActionLoading] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
     const colors = ['indigo', 'pink', 'blue', 'green', 'purple', 'orange'];
 
     const getInitials = (name: string) => {
@@ -50,6 +63,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
     const formatActivityDate = (dateStr: string) => {
         const date = new Date(dateStr);
         return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    };
+
+    const formatTime = (isoString: string | null): string => {
+        if (!isoString) return '--:--';
+        const d = new Date(isoString);
+        return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     };
 
     const mapApprovalToActivity = (approval: ApprovalRequest, idx: number): RecentActivity => {
@@ -70,40 +89,129 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
             type: approval.type === 'OT' ? 'OT Request' : approval.type === 'LEAVE' ? 'Annual Leave' : 'Claim',
             date: formatActivityDate(approval.submittedAt),
             status: statusMap[approval.status] || 'Pending',
-            actionIcon: approval.status === 'PENDING' || approval.status === 'pending' ? 'edit_square' : 'visibility',
+            actionIcon: approval.status === 'PENDING' ? 'edit_square' : 'visibility',
+            isMissingPunch: false,
         };
     };
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                
-                // Fetch stats and recent activities in parallel
-                const [statsResponse, approvalsResponse] = await Promise.all([
-                    api.stats.getSummary(),
-                    api.approvals.getPending().catch(() => ({ success: false, data: [] })),
-                ]);
-
-                if (statsResponse.success && statsResponse.data) {
-                    setStats(statsResponse.data);
-                }
-
-                // Map approvals to activities (limit to 5)
-                if (approvalsResponse.success && approvalsResponse.data) {
-                    const activities = approvalsResponse.data.slice(0, 5).map(mapApprovalToActivity);
-                    setRecentActivities(activities);
-                }
-            } catch (err) {
-                const message = err instanceof ApiError ? err.message : 'Failed to load dashboard';
-                setError(message);
-            } finally {
-                setLoading(false);
-            }
+    const mapAttendanceToActivity = (record: AttendanceRecord, idx: number): RecentActivity => {
+        return {
+            id: record.id,
+            name: record.full_name,
+            initials: getInitials(record.full_name),
+            color: colors[(idx + 3) % colors.length],
+            type: 'Missing Punch',
+            date: formatActivityDate(record.attendance_date),
+            status: 'MissingPunch',
+            actionIcon: 'edit',
+            isMissingPunch: true,
+            rawClockIn: record.raw_clock_in || undefined,
         };
+    };
 
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+
+            // Fetch stats, approvals, and attendance in parallel
+            const [statsResponse, approvalsResponse, attendanceResponse] = await Promise.all([
+                api.stats.getSummary(),
+                api.approvals.getPending().catch(() => ({ success: false, data: [] })),
+                api.attendance.getAll().catch(() => ({ success: false, data: [] })),
+            ]);
+
+            if (statsResponse.success && statsResponse.data) {
+                setStats(statsResponse.data);
+            }
+
+            // Combine approvals and missing punch records
+            const activities: RecentActivity[] = [];
+
+            // Add approvals (limit to 3)
+            if (approvalsResponse.success && approvalsResponse.data) {
+                const approvalActivities = approvalsResponse.data.slice(0, 3).map(mapApprovalToActivity);
+                activities.push(...approvalActivities);
+            }
+
+            // Add missing punch records (filter for missing clock-out, limit to 3)
+            if (attendanceResponse.success && attendanceResponse.data) {
+                const missingPunchRecords = attendanceResponse.data
+                    .filter((r: AttendanceRecord) => r.raw_clock_out === null)
+                    .slice(0, 3)
+                    .map(mapAttendanceToActivity);
+                activities.push(...missingPunchRecords);
+            }
+
+            // Sort by date and limit to 6 total
+            setRecentActivities(activities.slice(0, 6));
+        } catch (err) {
+            const message = err instanceof ApiError ? err.message : 'Failed to load dashboard';
+            setError(message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchData();
     }, []);
+
+    // Handle opening edit modal for missing punch
+    const handleOpenEditModal = (activity: RecentActivity) => {
+        setEditingActivity(activity);
+        // Set default clock-out to end of work day (17:00) on the record's date
+        if (activity.rawClockIn) {
+            const clockIn = new Date(activity.rawClockIn);
+            const defaultOut = new Date(clockIn);
+            defaultOut.setHours(17, 0, 0, 0);
+            // Format for datetime-local input: YYYY-MM-DDTHH:mm
+            const formatted = defaultOut.toISOString().slice(0, 16);
+            setClockOutInput(formatted);
+        } else {
+            setClockOutInput('');
+        }
+        setRemarksInput('');
+        setEditModalOpen(true);
+    };
+
+    // Handle fixing missing punch
+    const handleFixMissingPunch = async () => {
+        if (!editingActivity || !clockOutInput) return;
+
+        setActionLoading(true);
+        try {
+            const clockOutTime = new Date(clockOutInput).toISOString();
+            const response = await api.attendance.fixMissingPunch(
+                editingActivity.id,
+                clockOutTime,
+                remarksInput || undefined
+            );
+
+            if (response.success) {
+                setToast({ message: 'Missing punch fixed successfully!', type: 'success' });
+                setEditModalOpen(false);
+                setEditingActivity(null);
+                // Refresh data from server
+                await fetchData();
+            } else {
+                setToast({ message: response.error || 'Failed to fix missing punch', type: 'error' });
+            }
+        } catch (err: any) {
+            setToast({ message: err.message || 'Failed to fix missing punch', type: 'error' });
+        } finally {
+            setActionLoading(false);
+            setTimeout(() => setToast(null), 3000);
+        }
+    };
+
+    // Handle action button click
+    const handleActionClick = (activity: RecentActivity) => {
+        if (activity.isMissingPunch) {
+            handleOpenEditModal(activity);
+        } else {
+            onNavigate('Approvals');
+        }
+    };
 
     const formatPayrollDate = (dateStr: string | null) => {
         if (!dateStr) return '--';
@@ -122,7 +230,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
         const today = new Date();
         const cutoff = new Date(cutoffDate);
         const diffDays = Math.ceil((cutoff.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays === 0) return 'Processing cutoff: Today';
         if (diffDays === 1) return 'Processing cutoff: Tomorrow';
         if (diffDays < 0) return 'Processing cutoff: Passed';
@@ -211,7 +319,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Recent Activities</h2>
-                        <button 
+                        <button
                             onClick={() => onNavigate('Approvals')}
                             className="text-sm font-bold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                         >
@@ -263,10 +371,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
                                                     <StatusBadge status={activity.status} />
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <button 
-                                                        onClick={() => onNavigate('Approvals')}
+                                                    <button
+                                                        onClick={() => handleActionClick(activity)}
                                                         className="text-slate-400 hover:text-primary transition-colors"
-                                                        title="View Details"
+                                                        title={activity.isMissingPunch ? 'Fix Missing Punch' : 'View Details'}
                                                     >
                                                         <span className="material-symbols-outlined">{activity.actionIcon}</span>
                                                     </button>
@@ -280,6 +388,89 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Toast Notification */}
+            {toast && (
+                <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 ${toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                    <span className="material-symbols-outlined text-sm">
+                        {toast.type === 'success' ? 'check_circle' : 'error'}
+                    </span>
+                    {toast.message}
+                </div>
+            )}
+
+            {/* Edit Missing Punch Modal */}
+            {editModalOpen && editingActivity && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+                        <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Fix Missing Punch</h2>
+                                <button
+                                    onClick={() => { setEditModalOpen(false); setEditingActivity(null); }}
+                                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
+                                >
+                                    <span className="material-symbols-outlined text-slate-400">close</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                                <div className="size-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">{editingActivity.initials}</div>
+                                <div>
+                                    <p className="font-bold text-slate-900 dark:text-white">{editingActivity.name}</p>
+                                    <p className="text-xs text-slate-500">{editingActivity.date}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-slate-900 dark:text-white">Clock In</label>
+                                <p className="text-slate-700 dark:text-slate-200 font-mono bg-slate-100 dark:bg-slate-700 px-3 py-2 rounded-lg">
+                                    {editingActivity.rawClockIn ? formatTime(editingActivity.rawClockIn) : '--:--'}
+                                </p>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-slate-900 dark:text-white">Clock Out Time *</label>
+                                <input
+                                    type="datetime-local"
+                                    value={clockOutInput}
+                                    onChange={(e) => setClockOutInput(e.target.value)}
+                                    className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-slate-900 dark:text-white">Remarks (Optional)</label>
+                                <textarea
+                                    value={remarksInput}
+                                    onChange={(e) => setRemarksInput(e.target.value)}
+                                    placeholder="e.g., Confirmed with employee"
+                                    rows={2}
+                                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="p-6 border-t border-slate-200 dark:border-slate-700 flex gap-3">
+                            <button
+                                onClick={() => { setEditModalOpen(false); setEditingActivity(null); }}
+                                className="flex-1 h-10 rounded-full border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium text-slate-700 dark:text-white transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleFixMissingPunch}
+                                disabled={actionLoading || !clockOutInput}
+                                className="flex-1 h-10 rounded-full bg-primary hover:bg-[#eae605] text-black font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {actionLoading ? (
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent"></div>
+                                ) : (
+                                    <span className="material-symbols-outlined text-[18px]">check</span>
+                                )}
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -12,7 +12,7 @@
 // CONFIGURATION
 // ============================================================================
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const TOKEN_KEY = 'authToken';
 const LOGIN_PATH = '/login';
@@ -358,33 +358,33 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
-  
+
   // Build headers with auth token
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
-  
+
   const token = getToken();
   if (token) {
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
-  
+
   try {
     const response = await fetch(url, {
       ...options,
       headers,
     });
-    
+
     // Handle 401 Unauthorized - redirect to login
     if (response.status === 401) {
       redirectToLogin();
       throw new ApiError('Session expired. Please log in again.', 401);
     }
-    
+
     // Parse response
     const data = await response.json();
-    
+
     // Handle other error status codes
     if (!response.ok) {
       throw new ApiError(
@@ -393,14 +393,14 @@ async function request<T>(
         data
       );
     }
-    
+
     return data;
   } catch (error) {
     // Network errors
     if (error instanceof ApiError) {
       throw error;
     }
-    
+
     throw new ApiError(
       error instanceof Error ? error.message : 'Network error',
       0
@@ -425,7 +425,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(credentials),
       });
-      
+
       // Auto-store token on successful login
       if (response.success && response.data?.token) {
         setToken(response.data.token);
@@ -433,30 +433,30 @@ export const api = {
         // Handle case where token is at root level
         setToken((response as unknown as LoginResponse).token);
       }
-      
+
       return response as unknown as LoginResponse;
     },
-    
+
     /**
      * Logout - clear token and redirect
      */
     logout(): void {
       redirectToLogin();
     },
-    
+
     /**
      * Check if user is authenticated
      */
     isAuthenticated(): boolean {
       return !!getToken();
     },
-    
+
     /**
      * Get current token
      */
     getToken,
   },
-  
+
   /**
    * Employee endpoints
    */
@@ -467,14 +467,14 @@ export const api = {
     async getAll(): Promise<ApiResponse<Employee[]>> {
       return request<Employee[]>('/api/employees');
     },
-    
+
     /**
      * Get employee by ID
      */
     async getById(id: string): Promise<ApiResponse<Employee>> {
       return request<Employee>(`/api/employees/${id}`);
     },
-    
+
     /**
      * Create new employee
      */
@@ -484,7 +484,7 @@ export const api = {
         body: JSON.stringify(employee),
       });
     },
-    
+
     /**
      * Update employee
      */
@@ -495,7 +495,7 @@ export const api = {
       });
     },
   },
-  
+
   /**
    * Payroll endpoints
    */
@@ -509,7 +509,7 @@ export const api = {
         body: JSON.stringify(params),
       });
     },
-    
+
     /**
      * Get payroll runs
      */
@@ -517,11 +517,11 @@ export const api = {
       const queryParams = new URLSearchParams();
       if (status) queryParams.set('status', status);
       if (limit) queryParams.set('limit', String(limit));
-      
+
       const query = queryParams.toString();
       return request<unknown[]>(`/api/payroll/runs${query ? `?${query}` : ''}`);
     },
-    
+
     /**
      * Finalize payroll run
      */
@@ -531,7 +531,7 @@ export const api = {
       });
     },
   },
-  
+
   /**
    * Attendance endpoints
    */
@@ -542,7 +542,7 @@ export const api = {
     async getAll(): Promise<ApiResponse<AttendanceRecord[]>> {
       return request<AttendanceRecord[]>('/api/attendance');
     },
-    
+
     /**
      * Clock in
      */
@@ -552,7 +552,7 @@ export const api = {
         body: JSON.stringify(params),
       });
     },
-    
+
     /**
      * Clock out
      */
@@ -561,7 +561,7 @@ export const api = {
         method: 'PUT',
       });
     },
-    
+
     /**
      * Approve overtime
      */
@@ -571,8 +571,24 @@ export const api = {
         body: JSON.stringify({ approvedHours: hours }),
       });
     },
+
+    /**
+     * Fix missing punch - manually set clock-out time
+     */
+    async fixMissingPunch(attendanceId: string, clockOutTime: string, remarks?: string): Promise<ApiResponse<{
+      id: string;
+      clockIn: string;
+      clockOut: string;
+      workingHours: number;
+      isManualEntry: boolean;
+    }>> {
+      return request(`/api/attendance/${attendanceId}/fix-missing-punch`, {
+        method: 'PUT',
+        body: JSON.stringify({ clockOutTime, remarks }),
+      });
+    },
   },
-  
+
   /**
    * EWA (Earned Wage Access) endpoints
    */
@@ -583,7 +599,7 @@ export const api = {
     async getPending(): Promise<ApiResponse<EWARequest[]>> {
       return request<EWARequest[]>('/api/ewa/pending');
     },
-    
+
     /**
      * Submit EWA request
      */
@@ -593,14 +609,14 @@ export const api = {
         body: JSON.stringify(params),
       });
     },
-    
+
     /**
      * Get EWA balance for employee
      */
     async getBalance(employeeId: string): Promise<ApiResponse<unknown>> {
       return request<unknown>(`/api/ewa/balance/${employeeId}`);
     },
-    
+
     /**
      * Approve EWA request
      */
@@ -613,7 +629,7 @@ export const api = {
         body: JSON.stringify(params || {}),
       });
     },
-    
+
     /**
      * Reject EWA request
      */
@@ -623,7 +639,7 @@ export const api = {
         body: JSON.stringify({ reason }),
       });
     },
-    
+
     /**
      * Get EWA history for employee
      */
@@ -634,7 +650,7 @@ export const api = {
       const queryParams = new URLSearchParams();
       if (options?.limit) queryParams.set('limit', String(options.limit));
       if (options?.offset) queryParams.set('offset', String(options.offset));
-      
+
       const query = queryParams.toString();
       return request<unknown[]>(`/api/ewa/history/${employeeId}${query ? `?${query}` : ''}`);
     },

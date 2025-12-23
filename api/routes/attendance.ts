@@ -5,11 +5,11 @@
 
 import { Router, Request, Response } from 'express';
 import { query } from '../lib/db';
-import { 
-  ClockInSchema, 
-  ClockInRequest, 
-  validateRequest, 
-  formatZodErrors 
+import {
+  ClockInSchema,
+  ClockInRequest,
+  validateRequest,
+  formatZodErrors
 } from '../lib/validation';
 
 export const attendanceRouter = Router();
@@ -116,7 +116,7 @@ attendanceRouter.post('/clock-in', async (req: Request, res: Response) => {
     // Step 1: Validate Input with Zod
     // ========================================================================
     const validation = validateRequest(ClockInSchema, req.body);
-    
+
     if (!validation.success) {
       return res.status(400).json({
         success: false,
@@ -153,7 +153,7 @@ attendanceRouter.post('/clock-in', async (req: Request, res: Response) => {
     // Step 3: Double Punch Detection (5-minute debounce)
     // ========================================================================
     const debounceWindowStart = new Date(clockInTime.getTime() - DOUBLE_PUNCH_DEBOUNCE_MINUTES * 60 * 1000);
-    
+
     const recentPunchResult = await query<AttendanceRecord>(
       `SELECT id, raw_clock_in, raw_clock_out 
        FROM attendance_ledger 
@@ -207,7 +207,7 @@ attendanceRouter.post('/clock-in', async (req: Request, res: Response) => {
 
     if (existingAttendanceResult.rowCount && existingAttendanceResult.rowCount > 0) {
       const existingRecord = existingAttendanceResult.rows[0];
-      
+
       // If there's an existing record without clock-out, treat this as clock-out
       if (!existingRecord.raw_clock_out) {
         // Update with clock-out time
@@ -364,7 +364,7 @@ attendanceRouter.get('/status/:workerId', async (req: Request, res: Response) =>
 attendanceRouter.put('/:id/approve-ot', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).user?.tenantId;
-    
+
     if (!tenantId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
@@ -414,6 +414,124 @@ attendanceRouter.put('/:id/approve-ot', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Approve OT error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+    });
+  }
+});
+
+// ============================================================================
+// PUT /api/attendance/:id/fix-missing-punch - Fix missing clock-out
+// ============================================================================
+
+/**
+ * Fix a missing punch (clock-out) for an attendance record
+ * Used by HR to manually enter clock-out time after confirmation
+ */
+attendanceRouter.put('/:id/fix-missing-punch', async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).user?.tenantId;
+    const userId = (req as any).user?.userId;
+
+    if (!tenantId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { id } = req.params;
+    const { clockOutTime, remarks } = req.body;
+
+    // Validate clockOutTime is provided
+    if (!clockOutTime) {
+      return res.status(400).json({
+        success: false,
+        error: 'Clock-out time is required',
+      });
+    }
+
+    // Parse and validate the clock-out time
+    const clockOut = new Date(clockOutTime);
+    if (isNaN(clockOut.getTime())) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid clock-out time format',
+      });
+    }
+
+    // Get the existing attendance record
+    const existingResult = await query<{
+      id: string;
+      raw_clock_in: string;
+      raw_clock_out: string | null;
+      attendance_date: string;
+    }>(
+      `SELECT id, raw_clock_in, raw_clock_out, attendance_date
+       FROM attendance_ledger 
+       WHERE id = $1 AND tenant_id = $2`,
+      [id, tenantId]
+    );
+
+    if (existingResult.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Attendance record not found',
+      });
+    }
+
+    const record = existingResult.rows[0];
+
+    // Verify this is actually a missing punch record
+    if (record.raw_clock_out !== null) {
+      return res.status(400).json({
+        success: false,
+        error: 'This record already has a clock-out time. Use the edit function instead.',
+      });
+    }
+
+    // Validate clock-out is after clock-in
+    const clockIn = new Date(record.raw_clock_in);
+    if (clockOut <= clockIn) {
+      return res.status(400).json({
+        success: false,
+        error: 'Clock-out time must be after clock-in time',
+      });
+    }
+
+    // Calculate working hours
+    const workingHoursMs = clockOut.getTime() - clockIn.getTime();
+    const workingHours = Math.round((workingHoursMs / (1000 * 60 * 60)) * 100) / 100; // Round to 2 decimal places
+
+    // Update the record with the manual clock-out
+    const updateResult = await query(
+      `UPDATE attendance_ledger 
+       SET raw_clock_out = $1,
+           verified_clock_out = $1,
+           working_hours = $2,
+           is_manual_entry = true,
+           manual_entry_by = $3,
+           remarks = COALESCE($4, remarks),
+           updated_at = NOW()
+       WHERE id = $5 AND tenant_id = $6
+       RETURNING id, raw_clock_in, raw_clock_out, working_hours, is_manual_entry`,
+      [clockOut.toISOString(), workingHours, userId, remarks, id, tenantId]
+    );
+
+    const updated = updateResult.rows[0];
+
+    return res.json({
+      success: true,
+      message: 'Missing punch fixed successfully',
+      data: {
+        id: updated.id,
+        clockIn: updated.raw_clock_in,
+        clockOut: updated.raw_clock_out,
+        workingHours: updated.working_hours,
+        isManualEntry: updated.is_manual_entry,
+      },
+    });
+
+  } catch (error) {
+    console.error('Fix missing punch error:', error);
     return res.status(500).json({
       success: false,
       error: 'Internal Server Error',

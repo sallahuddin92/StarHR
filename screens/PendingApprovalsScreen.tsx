@@ -89,13 +89,13 @@ const PendingApprovalsScreen: React.FC<PendingApprovalsScreenProps> = ({ onNavig
             const matchesSearch = searchQuery === '' ||
                 a.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 a.employeeCode.toLowerCase().includes(searchQuery.toLowerCase());
-            
+
             // Status filter
             const normalizedStatus = a.status?.toLowerCase() || 'pending';
-            const matchesFilter = filter === 'all' || 
+            const matchesFilter = filter === 'all' ||
                 (filter === 'pending' && normalizedStatus === 'pending') ||
                 (filter === 'approved' && normalizedStatus === 'approved');
-            
+
             return matchesSearch && matchesFilter;
         });
     }, [approvals, searchQuery, filter]);
@@ -104,9 +104,8 @@ const PendingApprovalsScreen: React.FC<PendingApprovalsScreenProps> = ({ onNavig
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display text-text-main dark:text-gray-100">
             {/* Toast Notification */}
             {toast && (
-                <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 ${
-                    toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                }`}>
+                <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 ${toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                    }`}>
                     <span className="material-symbols-outlined text-sm">
                         {toast.type === 'success' ? 'check_circle' : 'error'}
                     </span>
@@ -123,7 +122,7 @@ const PendingApprovalsScreen: React.FC<PendingApprovalsScreenProps> = ({ onNavig
                             <span className="material-symbols-outlined text-text-sub dark:text-gray-400 text-[16px]">chevron_right</span>
                             <span className="text-text-main dark:text-white font-medium">Pending Approvals</span>
                         </nav>
-                        
+
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                             <div className="flex flex-col gap-2">
                                 <h1 className="text-text-main dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Pending Approvals</h1>
@@ -147,11 +146,10 @@ const PendingApprovalsScreen: React.FC<PendingApprovalsScreenProps> = ({ onNavig
                             <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
                                 <button
                                     onClick={() => setFilter('pending')}
-                                    className={`flex h-10 shrink-0 items-center gap-2 rounded-full px-4 font-bold text-sm transition-transform active:scale-95 ${
-                                        filter === 'pending'
+                                    className={`flex h-10 shrink-0 items-center gap-2 rounded-full px-4 font-bold text-sm transition-transform active:scale-95 ${filter === 'pending'
                                             ? 'bg-black dark:bg-white text-primary dark:text-black border border-transparent'
                                             : 'bg-white dark:bg-card-dark text-text-main dark:text-gray-300 border border-gray-200 dark:border-gray-700'
-                                    }`}
+                                        }`}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">inbox</span> Pending ({approvals.length})
                                 </button>
@@ -190,7 +188,7 @@ const PendingApprovalsScreen: React.FC<PendingApprovalsScreenProps> = ({ onNavig
                                             <div className="flex items-center gap-4">
                                                 <div
                                                     className="bg-center bg-no-repeat bg-cover rounded-full size-14 border-2 border-white dark:border-gray-700 shadow-sm"
-                                                    style={{backgroundImage: `url('${approval.avatarUrl || `https://placehold.co/140x140`}')`}}
+                                                    style={{ backgroundImage: `url('${approval.avatarUrl || `https://placehold.co/140x140`}')` }}
                                                 ></div>
                                                 <div className="flex flex-col">
                                                     <h3 className="text-xl font-bold text-text-main dark:text-white">{approval.employeeName}</h3>
@@ -218,31 +216,30 @@ const PendingApprovalsScreen: React.FC<PendingApprovalsScreenProps> = ({ onNavig
                                                     <div className="flex flex-col gap-1">
                                                         <span className="text-xs text-text-sub dark:text-gray-500">Date</span>
                                                         <span className="font-semibold text-text-main dark:text-gray-200">
-                                                            {approval.details.attendanceDate ? formatDate(approval.details.attendanceDate) : '--'}
+                                                            {approval.details?.attendanceDate ? formatDate(approval.details.attendanceDate) : '--'}
                                                         </span>
                                                     </div>
                                                     <div className="flex flex-col gap-1">
                                                         <span className="text-xs text-text-sub dark:text-gray-500">Clock In</span>
-                                                        <span className="font-semibold text-text-main dark:text-gray-200">{formatTime(approval.details.clockIn)}</span>
+                                                        <span className="font-semibold text-text-main dark:text-gray-200">{formatTime(approval.details?.clockIn)}</span>
                                                     </div>
                                                     <div className="flex flex-col gap-1">
                                                         <span className="text-xs text-text-sub dark:text-gray-500">Clock Out</span>
-                                                        <span className="font-semibold text-text-main dark:text-gray-200">{formatTime(approval.details.clockOut)}</span>
+                                                        <span className="font-semibold text-text-main dark:text-gray-200">{formatTime(approval.details?.clockOut)}</span>
                                                     </div>
                                                 </div>
-                                                {approval.details.notes && (
+                                                {approval.details?.notes && (
                                                     <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
                                                         <p className="text-sm italic text-text-main dark:text-gray-300">"{approval.details.notes}"</p>
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className={`col-span-1 md:col-span-4 flex flex-col justify-center items-center rounded-3xl p-5 text-center relative overflow-hidden group ${
-                                                idx === 0 ? 'bg-primary' : 'bg-gray-100 dark:bg-gray-800'
-                                            }`}>
+                                            <div className={`col-span-1 md:col-span-4 flex flex-col justify-center items-center rounded-3xl p-5 text-center relative overflow-hidden group ${idx === 0 ? 'bg-primary' : 'bg-gray-100 dark:bg-gray-800'
+                                                }`}>
                                                 {idx === 0 && <div className="absolute -right-6 -top-6 size-24 bg-white/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>}
                                                 <span className={`text-sm font-bold mb-1 z-10 ${idx === 0 ? 'text-black/70' : 'text-text-sub dark:text-gray-400'}`}>Total Overtime</span>
                                                 <span className={`text-5xl font-black tracking-tight z-10 ${idx === 0 ? 'text-black' : 'text-primary'}`}>
-                                                    +{approval.details.requestedHours?.toFixed(1) || '0.0'} <span className="text-2xl font-bold">HRS</span>
+                                                    +{approval.details?.requestedHours?.toFixed(1) || '0.0'} <span className="text-2xl font-bold">HRS</span>
                                                 </span>
                                             </div>
                                         </div>
@@ -256,13 +253,12 @@ const PendingApprovalsScreen: React.FC<PendingApprovalsScreenProps> = ({ onNavig
                                                         <React.Fragment key={step}>
                                                             {step > 1 && <div className="w-8 h-0.5 bg-gray-200 dark:bg-gray-700"></div>}
                                                             <div className={`flex items-center gap-2 ${step > approval.currentStep ? 'opacity-40 grayscale' : step < approval.currentStep ? 'opacity-50' : ''}`}>
-                                                                <div className={`size-6 rounded-full flex items-center justify-center ${
-                                                                    step < approval.currentStep
+                                                                <div className={`size-6 rounded-full flex items-center justify-center ${step < approval.currentStep
                                                                         ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
                                                                         : step === approval.currentStep
                                                                             ? 'border-2 border-primary relative'
                                                                             : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
-                                                                }`}>
+                                                                    }`}>
                                                                     {step < approval.currentStep ? (
                                                                         <span className="material-symbols-outlined text-sm font-bold">check</span>
                                                                     ) : step === approval.currentStep ? (
