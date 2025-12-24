@@ -1,8 +1,28 @@
 import React from 'react';
 import {
-  Users, Clock, DollarSign, FileText, Settings,
-  CheckCircle, Search, Menu, LogOut, ShieldCheck,
-  ChevronRight, Calendar, UserPlus, Briefcase, GraduationCap
+  Users,
+  Clock,
+  DollarSign,
+  FileText,
+  Settings,
+  CheckCircle,
+  Search,
+  Menu,
+  LogOut,
+  ShieldCheck,
+  ChevronRight,
+  Calendar,
+  UserPlus,
+  Briefcase,
+  GraduationCap,
+  Palmtree,
+  Network,
+  Sliders,
+  Scale,
+  AlertTriangle,
+  BarChart3,
+  ClipboardList,
+  Building2,
 } from 'lucide-react';
 
 // Import the Screen type from App to ensure type safety
@@ -16,7 +36,13 @@ export type ScreenId =
   | 'Onboarding'
   | 'Travel'
   | 'ProjectCosting'
-  | 'Training';
+  | 'Training'
+  | 'Leave'
+  | 'HierarchyBuilder'
+  | 'LeavePolicy'
+  | 'Entitlements'
+  | 'Escalations'
+  | 'AuditLogs';
 
 interface LayoutProps {
   activeScreen: ScreenId;
@@ -38,12 +64,16 @@ interface NavItemProps {
 const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, id, active, set }) => (
   <button
     onClick={() => set(id)}
-    className={`flex items-center gap-3 w-full p-3 rounded-lg transition-all duration-200 group ${active === id
+    className={`flex items-center gap-3 w-full p-3 rounded-lg transition-all duration-200 group ${
+      active === id
         ? 'bg-blue-600/10 text-blue-400 border-r-2 border-blue-400'
         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-      }`}
+    }`}
   >
-    <Icon size={20} className={`transition-colors ${active === id ? 'text-blue-400' : 'text-slate-500 group-hover:text-white'}`} />
+    <Icon
+      size={20}
+      className={`transition-colors ${active === id ? 'text-blue-400' : 'text-slate-500 group-hover:text-white'}`}
+    />
     <span className={`text-sm font-medium ${active === id ? 'text-blue-100' : ''}`}>{label}</span>
     {active === id && <ChevronRight size={16} className="ml-auto text-blue-400 opacity-50" />}
   </button>
@@ -66,50 +96,224 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeTab, setActiveTab, onLogo
         </div>
         <div>
           <h1 className="text-lg font-bold tracking-tight text-white leading-none">HR CORE</h1>
-          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-1">Enterprise v2.5</p>
+          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-1">
+            Enterprise v2.5
+          </p>
         </div>
       </div>
+      {/* Role Indicator */}
+      {role === 'HR_ADMIN' && (
+        <div className="mt-3 px-3 py-1.5 bg-blue-600/20 rounded-lg border border-blue-500/30">
+          <p className="text-xs font-semibold text-blue-400 uppercase tracking-wide">
+            HR Administrator
+          </p>
+        </div>
+      )}
     </div>
 
     {/* Navigation Section */}
     <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
-      <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">Main Menu</div>
-
-      <NavItem icon={Briefcase} label="Dashboard" id="Dashboard" active={activeTab} set={setActiveTab} />
-
-      {/* ADMIN ROUTES */}
+      {/* HR ADMIN ROUTES - System Authority Only */}
       {role === 'HR_ADMIN' && (
         <>
-          <div className="my-4 border-t border-slate-800/50"></div>
-          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">Administration</div>
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            System Settings
+          </div>
+          <NavItem
+            icon={Sliders}
+            label="Leave Policy"
+            id="LeavePolicy"
+            active={activeTab}
+            set={setActiveTab}
+          />
+          <NavItem
+            icon={Scale}
+            label="Entitlements"
+            id="Entitlements"
+            active={activeTab}
+            set={setActiveTab}
+          />
 
-          <NavItem icon={Users} label="Employee Master" id="EmployeeMaster" active={activeTab} set={setActiveTab} />
-          <NavItem icon={Calendar} label="Payroll Cockpit" id="Payroll" active={activeTab} set={setActiveTab} />
-          <NavItem icon={Clock} label="Attendance" id="Attendance" active={activeTab} set={setActiveTab} />
-          <NavItem icon={UserPlus} label="Onboarding" id="Onboarding" active={activeTab} set={setActiveTab} />
-          <NavItem icon={FileText} label="Document Center" id="Documents" active={activeTab} set={setActiveTab} />
-          <NavItem icon={GraduationCap} label="Training" id="Training" active={activeTab} set={setActiveTab} />
-          <NavItem icon={Settings} label="Project Costing" id="ProjectCosting" active={activeTab} set={setActiveTab} />
+          <div className="my-4 border-t border-slate-800/50"></div>
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            Data Management
+          </div>
+          <NavItem
+            icon={Users}
+            label="Employee Master"
+            id="EmployeeMaster"
+            active={activeTab}
+            set={setActiveTab}
+          />
+          <NavItem
+            icon={Network}
+            label="Org Hierarchy"
+            id="HierarchyBuilder"
+            active={activeTab}
+            set={setActiveTab}
+          />
+          <NavItem
+            icon={UserPlus}
+            label="Onboarding"
+            id="Onboarding"
+            active={activeTab}
+            set={setActiveTab}
+          />
+
+          <div className="my-4 border-t border-slate-800/50"></div>
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            Operations
+          </div>
+          <NavItem
+            icon={CheckCircle}
+            label="Pending Approvals"
+            id="Approvals"
+            active={activeTab}
+            set={setActiveTab}
+          />
+          <NavItem
+            icon={AlertTriangle}
+            label="Escalations"
+            id="Escalations"
+            active={activeTab}
+            set={setActiveTab}
+          />
+
+          <div className="my-4 border-t border-slate-800/50"></div>
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            Monitoring
+          </div>
+          <NavItem
+            icon={Calendar}
+            label="Payroll Cockpit"
+            id="Payroll"
+            active={activeTab}
+            set={setActiveTab}
+          />
+          <NavItem
+            icon={Clock}
+            label="Attendance"
+            id="Attendance"
+            active={activeTab}
+            set={setActiveTab}
+          />
+          <NavItem
+            icon={FileText}
+            label="Document Center"
+            id="Documents"
+            active={activeTab}
+            set={setActiveTab}
+          />
+          <NavItem
+            icon={GraduationCap}
+            label="Training"
+            id="Training"
+            active={activeTab}
+            set={setActiveTab}
+          />
+
+          <div className="my-4 border-t border-slate-800/50"></div>
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            Audit & Compliance
+          </div>
+          <NavItem
+            icon={ClipboardList}
+            label="Action Logs"
+            id="AuditLogs"
+            active={activeTab}
+            set={setActiveTab}
+          />
         </>
       )}
 
       {/* MANAGER ROUTES */}
       {role === 'MANAGER' && (
         <>
-          <div className="my-4 border-t border-slate-800/50"></div>
-          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">Management</div>
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            Main Menu
+          </div>
+          <NavItem
+            icon={Briefcase}
+            label="Dashboard"
+            id="Dashboard"
+            active={activeTab}
+            set={setActiveTab}
+          />
 
-          <NavItem icon={CheckCircle} label="Approvals" id="Approvals" active={activeTab} set={setActiveTab} />
-          {/* Note: 'team' isn't a top-level screen in App.tsx yet, mapped to Dashboard or defined screen if exists */}
+          <div className="my-4 border-t border-slate-800/50"></div>
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            Management
+          </div>
+          <NavItem
+            icon={CheckCircle}
+            label="Approvals"
+            id="Approvals"
+            active={activeTab}
+            set={setActiveTab}
+          />
+          <NavItem
+            icon={Network}
+            label="Org Hierarchy"
+            id="HierarchyBuilder"
+            active={activeTab}
+            set={setActiveTab}
+          />
+
+          <div className="my-4 border-t border-slate-800/50"></div>
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            Personal
+          </div>
+          <NavItem
+            icon={Palmtree}
+            label="Leave (Cuti)"
+            id="Leave"
+            active={activeTab}
+            set={setActiveTab}
+          />
+          <NavItem
+            icon={Settings}
+            label="Travel & Expense"
+            id="Travel"
+            active={activeTab}
+            set={setActiveTab}
+          />
         </>
       )}
 
-      {/* WORKER / SHARED ROUTES */}
-      <div className="my-4 border-t border-slate-800/50"></div>
-      <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">Personal</div>
+      {/* WORKER ROUTES */}
+      {role === 'WORKER' && (
+        <>
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            Main Menu
+          </div>
+          <NavItem
+            icon={Briefcase}
+            label="Dashboard"
+            id="Dashboard"
+            active={activeTab}
+            set={setActiveTab}
+          />
 
-      <NavItem icon={Settings} label="Travel & Expense" id="Travel" active={activeTab} set={setActiveTab} />
-      {/* Assuming workers access their docs via Document Center too, or specific screens */}
+          <div className="my-4 border-t border-slate-800/50"></div>
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            Personal
+          </div>
+          <NavItem
+            icon={Palmtree}
+            label="Leave (Cuti)"
+            id="Leave"
+            active={activeTab}
+            set={setActiveTab}
+          />
+          <NavItem
+            icon={Settings}
+            label="Travel & Expense"
+            id="Travel"
+            active={activeTab}
+            set={setActiveTab}
+          />
+        </>
+      )}
     </nav>
 
     {/* Footer Section */}
@@ -121,22 +325,21 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeTab, setActiveTab, onLogo
         <LogOut size={18} />
         <span className="font-medium text-sm">Sign Out</span>
       </button>
-      <div className="text-center mt-3 text-[10px] text-slate-600">
-        &copy; 2025 StarHR Systems
-      </div>
+      <div className="text-center mt-3 text-[10px] text-slate-600">&copy; 2025 StarHR Systems</div>
     </div>
   </aside>
 );
 
-const Layout: React.FC<LayoutProps> = ({ children, activeScreen, onNavigate, onLogout, role = 'HR_ADMIN' }) => {
+const Layout: React.FC<LayoutProps> = ({
+  children,
+  activeScreen,
+  onNavigate,
+  onLogout,
+  role = 'HR_ADMIN',
+}) => {
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-[#0f1115]">
-      <Sidebar
-        role={role}
-        activeTab={activeScreen}
-        setActiveTab={onNavigate}
-        onLogout={onLogout}
-      />
+      <Sidebar role={role} activeTab={activeScreen} setActiveTab={onNavigate} onLogout={onLogout} />
       {/* Main Content Area - Offset by sidebar width */}
       <main className="flex-1 ml-64 min-w-0 flex flex-col h-screen overflow-y-auto">
         {/* Optional Top Bar can go here if needed, or just yield children */}

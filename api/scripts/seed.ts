@@ -1,7 +1,7 @@
 /**
  * Database Seed Script
  * Populates tenants, employees, salary_config, and attendance_ledger
- * 
+ *
  * Usage: npm run seed
  */
 
@@ -42,7 +42,7 @@ const employees: EmployeeSeed[] = [
     designation: 'VP Marketing',
     employmentType: 'Full-time',
     dateOfJoining: '2022-01-15',
-    basicSalary: 8500.00,
+    basicSalary: 8500.0,
     maritalStatus: 'married',
     children: 2,
     isForeigner: false,
@@ -56,7 +56,7 @@ const employees: EmployeeSeed[] = [
     designation: 'Operations Executive',
     employmentType: 'Full-time',
     dateOfJoining: '2022-03-01',
-    basicSalary: 3200.00,
+    basicSalary: 3200.0,
     maritalStatus: 'single',
     children: 0,
     isForeigner: false,
@@ -70,7 +70,7 @@ const employees: EmployeeSeed[] = [
     designation: 'Sales Executive',
     employmentType: 'Full-time',
     dateOfJoining: '2022-06-15',
-    basicSalary: 3500.00,
+    basicSalary: 3500.0,
     maritalStatus: 'single',
     children: 0,
     isForeigner: false,
@@ -84,7 +84,7 @@ const employees: EmployeeSeed[] = [
     designation: 'Account Executive',
     employmentType: 'Full-time',
     dateOfJoining: '2023-03-01',
-    basicSalary: 4200.00,
+    basicSalary: 4200.0,
     maritalStatus: 'single',
     children: 0,
     isForeigner: false,
@@ -98,7 +98,7 @@ const employees: EmployeeSeed[] = [
     designation: 'IT Specialist',
     employmentType: 'Full-time',
     dateOfJoining: '2022-09-01',
-    basicSalary: 4500.00,
+    basicSalary: 4500.0,
     maritalStatus: 'married',
     children: 1,
     isForeigner: false,
@@ -112,7 +112,7 @@ const employees: EmployeeSeed[] = [
     designation: 'Marketing Executive',
     employmentType: 'Full-time',
     dateOfJoining: '2023-01-15',
-    basicSalary: 3800.00,
+    basicSalary: 3800.0,
     maritalStatus: 'single',
     children: 0,
     isForeigner: false,
@@ -126,7 +126,7 @@ const employees: EmployeeSeed[] = [
     designation: 'Logistics Coordinator',
     employmentType: 'Full-time',
     dateOfJoining: '2022-04-01',
-    basicSalary: 2800.00,
+    basicSalary: 2800.0,
     maritalStatus: 'married',
     children: 3,
     isForeigner: false,
@@ -140,7 +140,7 @@ const employees: EmployeeSeed[] = [
     designation: 'General Counsel',
     employmentType: 'Full-time',
     dateOfJoining: '2021-06-15',
-    basicSalary: 12000.00,
+    basicSalary: 12000.0,
     maritalStatus: 'married',
     children: 1,
     isForeigner: false,
@@ -154,7 +154,7 @@ const employees: EmployeeSeed[] = [
     designation: 'Operations Lead',
     employmentType: 'Full-time',
     dateOfJoining: '2022-06-01',
-    basicSalary: 5500.00,
+    basicSalary: 5500.0,
     maritalStatus: 'single',
     children: 0,
     isForeigner: false,
@@ -168,7 +168,7 @@ const employees: EmployeeSeed[] = [
     designation: 'Production Supervisor',
     employmentType: 'Full-time',
     dateOfJoining: '2021-11-01',
-    basicSalary: 3600.00,
+    basicSalary: 3600.0,
     maritalStatus: 'married',
     children: 2,
     isForeigner: false,
@@ -197,20 +197,20 @@ interface AttendanceRow {
 function generateAttendanceData(days: number = 30): AttendanceRow[] {
   const records: AttendanceRow[] = [];
   const today = new Date();
-  
+
   for (let dayOffset = 0; dayOffset < days; dayOffset++) {
     const date = new Date(today);
     date.setDate(date.getDate() - dayOffset);
-    
+
     // Skip weekends
     if (date.getDay() === 0 || date.getDay() === 6) continue;
-    
+
     const dateStr = date.toISOString().split('T')[0];
-    
+
     for (const emp of employees) {
       // Random attendance patterns
       const random = Math.random();
-      
+
       // 85% chance of normal attendance
       if (random < 0.85) {
         // Normal clock in/out with some variation
@@ -218,14 +218,14 @@ function generateAttendanceData(days: number = 30): AttendanceRow[] {
         const clockInMin = Math.floor(Math.random() * 30);
         const clockOutHour = 17 + Math.floor(Math.random() * 3); // 5-7 PM
         const clockOutMin = Math.floor(Math.random() * 60);
-        
+
         const clockIn = `${dateStr}T${String(clockInHour).padStart(2, '0')}:${String(clockInMin).padStart(2, '0')}:00+08:00`;
         const clockOut = `${dateStr}T${String(clockOutHour).padStart(2, '0')}:${String(clockOutMin).padStart(2, '0')}:00+08:00`;
-        
+
         const workingHours = clockOutHour - clockInHour + (clockOutMin - clockInMin) / 60;
         const otRequested = Math.max(0, workingHours - 9); // OT if over 9 hours
         const otApproved = Math.random() > 0.3 ? otRequested : 0; // 70% OT approval rate
-        
+
         records.push({
           employeeId: emp.employeeId,
           date: dateStr,
@@ -243,7 +243,7 @@ function generateAttendanceData(days: number = 30): AttendanceRow[] {
         const clockInHour = 8 + Math.floor(Math.random() * 2);
         const clockInMin = Math.floor(Math.random() * 30);
         const clockIn = `${dateStr}T${String(clockInHour).padStart(2, '0')}:${String(clockInMin).padStart(2, '0')}:00+08:00`;
-        
+
         records.push({
           employeeId: emp.employeeId,
           date: dateStr,
@@ -260,7 +260,7 @@ function generateAttendanceData(days: number = 30): AttendanceRow[] {
       // Skip adding record
     }
   }
-  
+
   return records;
 }
 
@@ -277,7 +277,14 @@ async function ensureTenant(): Promise<void> {
        name = EXCLUDED.name, 
        contact_email = EXCLUDED.contact_email,
        employee_count = EXCLUDED.employee_count`,
-    [TENANT_ID, 'Demo Company Sdn Bhd', 'demo-company', 'admin@democompany.com', 'Technology', employees.length]
+    [
+      TENANT_ID,
+      'Demo Company Sdn Bhd',
+      'demo-company',
+      'admin@democompany.com',
+      'Technology',
+      employees.length,
+    ]
   );
   console.log(`  ✓ Tenant created: Demo Company Sdn Bhd`);
 }
@@ -285,7 +292,7 @@ async function ensureTenant(): Promise<void> {
 async function seedEmployees(): Promise<Map<string, string>> {
   console.log('  → Seeding employees...');
   const employeeIdMap = new Map<string, string>(); // Maps employeeId to UUID
-  
+
   for (const emp of employees) {
     const result = await query<{ id: string }>(
       `INSERT INTO employee_master (
@@ -315,23 +322,23 @@ async function seedEmployees(): Promise<Map<string, string>> {
         emp.dateOfJoining,
       ]
     );
-    
+
     if (result.rows[0]) {
       employeeIdMap.set(emp.employeeId, result.rows[0].id);
     }
   }
-  
+
   console.log(`  ✓ Seeded ${employees.length} employees`);
   return employeeIdMap;
 }
 
 async function seedSalaryConfig(employeeIdMap: Map<string, string>): Promise<void> {
   console.log('  → Seeding salary configurations...');
-  
+
   for (const emp of employees) {
     const uuid = employeeIdMap.get(emp.employeeId);
     if (!uuid) continue;
-    
+
     await query(
       `INSERT INTO salary_config (
          tenant_id, employee_id, basic_salary, daily_rate, hourly_rate,
@@ -363,26 +370,23 @@ async function seedSalaryConfig(employeeIdMap: Map<string, string>): Promise<voi
       ]
     );
   }
-  
+
   console.log(`  ✓ Seeded ${employees.length} salary configs`);
 }
 
 async function seedAttendance(employeeIdMap: Map<string, string>): Promise<void> {
   console.log('  → Seeding attendance records...');
-  
+
   // Clear existing attendance for demo tenant
-  await query(
-    `DELETE FROM attendance_ledger WHERE tenant_id = $1`,
-    [TENANT_ID]
-  );
-  
+  await query(`DELETE FROM attendance_ledger WHERE tenant_id = $1`, [TENANT_ID]);
+
   const attendanceRecords = generateAttendanceData(30); // Last 30 days
   let count = 0;
-  
+
   for (const record of attendanceRecords) {
     const uuid = employeeIdMap.get(record.employeeId);
     if (!uuid) continue;
-    
+
     await query(
       `INSERT INTO attendance_ledger (
          tenant_id, employee_id, attendance_date,
@@ -408,7 +412,7 @@ async function seedAttendance(employeeIdMap: Map<string, string>): Promise<void>
     );
     count++;
   }
-  
+
   console.log(`  ✓ Seeded ${count} attendance records`);
 }
 
@@ -424,13 +428,13 @@ async function main(): Promise<void> {
   console.log('');
   console.log(`Tenant ID: ${TENANT_ID}`);
   console.log('');
-  
+
   try {
     await ensureTenant();
     const employeeIdMap = await seedEmployees();
     await seedSalaryConfig(employeeIdMap);
     await seedAttendance(employeeIdMap);
-    
+
     console.log('');
     console.log('✅ Seed completed successfully!');
     console.log('');
@@ -449,7 +453,7 @@ async function main(): Promise<void> {
 
 main()
   .then(() => process.exit(0))
-  .catch((err) => {
+  .catch(err => {
     console.error('Seed error:', err);
     process.exit(1);
   });

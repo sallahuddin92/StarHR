@@ -5,11 +5,11 @@
 
 import { Router, Response } from 'express';
 import { query } from '../lib/db';
-import { 
-  RunDraftPayrollSchema, 
+import {
+  RunDraftPayrollSchema,
   RunDraftPayrollRequest,
-  validateRequest, 
-  formatZodErrors 
+  validateRequest,
+  formatZodErrors,
 } from '../lib/validation';
 import { calculateAllDeductions } from '../lib/statutory-kernel';
 import { AuthenticatedRequest } from '../middleware/auth';
@@ -87,9 +87,9 @@ interface DraftPayrollResponse {
 
 /**
  * Run Draft Payroll Endpoint
- * 
+ *
  * Accepts: { tenantId, basicStartDate, basicEndDate, otStartDate, otEndDate }
- * 
+ *
  * Logic:
  * 1. Query attendance_ledger for verified hours within the date ranges
  * 2. Call statutory-kernel to calculate Tax/EPF/SOCSO
@@ -110,7 +110,7 @@ payrollRouter.post('/run-draft', async (req: AuthenticatedRequest, res: Response
     // Step 2: Validate Input with Zod
     // ========================================================================
     const validation = validateRequest(RunDraftPayrollSchema, req.body);
-    
+
     if (!validation.success) {
       return res.status(400).json({
         success: false,
@@ -119,12 +119,8 @@ payrollRouter.post('/run-draft', async (req: AuthenticatedRequest, res: Response
       });
     }
 
-    const { 
-      basicStartDate, 
-      basicEndDate, 
-      otStartDate, 
-      otEndDate 
-    } = validation.data as RunDraftPayrollRequest;
+    const { basicStartDate, basicEndDate, otStartDate, otEndDate } =
+      validation.data as RunDraftPayrollRequest;
 
     // ========================================================================
     // Step 3: Verify Tenant Exists
@@ -232,16 +228,16 @@ payrollRouter.post('/run-draft', async (req: AuthenticatedRequest, res: Response
     for (const employee of employees) {
       const regularHours = regularHoursMap.get(employee.id) || 0;
       const overtimeHours = overtimeHoursMap.get(employee.id) || 0;
-      
+
       // Calculate basic salary (prorated if needed based on hours)
       const basicSalary = Number(employee.basic_salary) || 0;
-      
+
       // Calculate overtime amount
       // OT Rate = (Basic Salary / 26 days / 8 hours) * OT Multiplier
       const hourlyRate = basicSalary / 26 / 8;
       const otMultiplier = Number(employee.ot_rate_multiplier) || 1.5;
       const overtimeAmount = Math.round(overtimeHours * hourlyRate * otMultiplier * 100) / 100;
-      
+
       // Calculate gross
       const grossAmount = basicSalary + overtimeAmount;
 
@@ -291,7 +287,7 @@ payrollRouter.post('/run-draft', async (req: AuthenticatedRequest, res: Response
     // ========================================================================
     // Step 8: Save Draft to Database
     // ========================================================================
-    
+
     // Derive payroll_month from basic start date (first of that month)
     const payrollMonth = basicStartDate.substring(0, 7) + '-01'; // e.g., "2023-09-01"
 
@@ -310,10 +306,17 @@ payrollRouter.post('/run-draft', async (req: AuthenticatedRequest, res: Response
       ) VALUES ($1, $2, CURRENT_TIMESTAMP, $3, $4, $5, $6, 'draft', $7, CURRENT_TIMESTAMP, $8, $9, $10, $11)
       RETURNING id`,
       [
-        tenantId, payrollMonth, basicStartDate, basicEndDate,
-        otStartDate, otEndDate, userId,
-        payrollItems.length, Math.round(totalGross * 100) / 100,
-        Math.round(totalDeductions * 100) / 100, Math.round(totalNet * 100) / 100
+        tenantId,
+        payrollMonth,
+        basicStartDate,
+        basicEndDate,
+        otStartDate,
+        otEndDate,
+        userId,
+        payrollItems.length,
+        Math.round(totalGross * 100) / 100,
+        Math.round(totalDeductions * 100) / 100,
+        Math.round(totalNet * 100) / 100,
       ]
     );
 
@@ -329,10 +332,19 @@ payrollRouter.post('/run-draft', async (req: AuthenticatedRequest, res: Response
           calculated_by, calculated_date
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)`,
         [
-          tenantId, payrollRunId, item.employeeId, item.basicSalary,
-          item.overtimeHours, item.overtimeAmount, item.grossAmount,
-          item.deductions.epf, item.deductions.socso, item.deductions.pcb,
-          item.deductions.total, item.netAmount, userId
+          tenantId,
+          payrollRunId,
+          item.employeeId,
+          item.basicSalary,
+          item.overtimeHours,
+          item.overtimeAmount,
+          item.grossAmount,
+          item.deductions.epf,
+          item.deductions.socso,
+          item.deductions.pcb,
+          item.deductions.total,
+          item.netAmount,
+          userId,
         ]
       );
     }
@@ -367,7 +379,6 @@ payrollRouter.post('/run-draft', async (req: AuthenticatedRequest, res: Response
     };
 
     return res.status(200).json(response);
-
   } catch (error) {
     console.error('Run draft payroll error:', error);
     return res.status(500).json({
@@ -414,7 +425,6 @@ payrollRouter.get('/runs/:tenantId', async (req: Request, res: Response) => {
       data: result.rows,
       count: result.rowCount,
     });
-
   } catch (error) {
     console.error('Get payroll runs error:', error);
     return res.status(500).json({

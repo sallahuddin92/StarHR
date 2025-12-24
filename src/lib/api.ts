@@ -1,7 +1,7 @@
 /**
  * Frontend API Client
  * Centralized API calls with automatic JWT handling
- * 
+ *
  * Usage:
  *   import { api } from '@/lib/api';
  *   const { data } = await api.employees.getAll();
@@ -54,6 +54,53 @@ interface Employee {
   designation: string | null;
   phone_number?: string;
   date_of_joining?: string;
+}
+
+// Leave Module Types
+interface LeaveType {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  maxDaysPerYear: number;
+  carryForwardAllowed: boolean;
+  maxCarryForwardDays: number;
+  requiresApproval: boolean;
+  requiresDocument: boolean;
+  isPaid: boolean;
+  minNoticeDays: number;
+}
+
+interface LeaveBalance {
+  leaveTypeId: string;
+  leaveTypeCode: string;
+  leaveTypeName: string;
+  year: number;
+  allocated: number;
+  taken: number;
+  pending: number;
+  carryForward: number;
+  remaining: number;
+  isPaid: boolean;
+}
+
+interface LeaveRequest {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  leaveTypeId: string;
+  leaveTypeCode: string;
+  leaveTypeName: string;
+  startDate: string;
+  endDate: string;
+  daysRequested: number;
+  reason: string | null;
+  status: string;
+  submittedAt: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  department?: string;
 }
 
 interface PayrollDraftParams {
@@ -353,10 +400,7 @@ function redirectToLogin(): void {
 /**
  * Core fetch wrapper with auth handling
  */
-async function request<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
 
   // Build headers with auth token
@@ -401,10 +445,7 @@ async function request<T>(
       throw error;
     }
 
-    throw new ApiError(
-      error instanceof Error ? error.message : 'Network error',
-      0
-    );
+    throw new ApiError(error instanceof Error ? error.message : 'Network error', 0);
   }
 }
 
@@ -620,13 +661,19 @@ export const api = {
     /**
      * Fix missing punch - manually set clock-out time
      */
-    async fixMissingPunch(attendanceId: string, clockOutTime: string, remarks?: string): Promise<ApiResponse<{
-      id: string;
-      clockIn: string;
-      clockOut: string;
-      workingHours: number;
-      isManualEntry: boolean;
-    }>> {
+    async fixMissingPunch(
+      attendanceId: string,
+      clockOutTime: string,
+      remarks?: string
+    ): Promise<
+      ApiResponse<{
+        id: string;
+        clockIn: string;
+        clockOut: string;
+        workingHours: number;
+        isManualEntry: boolean;
+      }>
+    > {
       return request(`/api/attendance/${attendanceId}/fix-missing-punch`, {
         method: 'PUT',
         body: JSON.stringify({ clockOutTime, remarks }),
@@ -720,7 +767,9 @@ export const api = {
     /**
      * Get pending approval requests
      */
-    async getPending(type?: 'OT' | 'LEAVE' | 'CLAIM' | 'ALL'): Promise<ApiResponse<ApprovalRequest[]>> {
+    async getPending(
+      type?: 'OT' | 'LEAVE' | 'CLAIM' | 'ALL'
+    ): Promise<ApiResponse<ApprovalRequest[]>> {
       const params = type ? `?type=${type}` : '';
       return request<ApprovalRequest[]>(`/api/approvals/pending${params}`);
     },
@@ -735,7 +784,10 @@ export const api = {
     /**
      * Approve a request
      */
-    async approve(id: string, notes?: string): Promise<ApiResponse<{ id: string; status: string; approvedHours?: number }>> {
+    async approve(
+      id: string,
+      notes?: string
+    ): Promise<ApiResponse<{ id: string; status: string; approvedHours?: number }>> {
       return request(`/api/approvals/${id}/approve`, {
         method: 'PUT',
         body: JSON.stringify({ notes }),
@@ -745,7 +797,10 @@ export const api = {
     /**
      * Reject a request
      */
-    async reject(id: string, reason: string): Promise<ApiResponse<{ id: string; status: string; reason: string }>> {
+    async reject(
+      id: string,
+      reason: string
+    ): Promise<ApiResponse<{ id: string; status: string; reason: string }>> {
       return request(`/api/approvals/${id}/reject`, {
         method: 'PUT',
         body: JSON.stringify({ reason }),
@@ -755,7 +810,11 @@ export const api = {
     /**
      * Get approval history
      */
-    async getHistory(options?: { status?: string; limit?: number; offset?: number }): Promise<ApiResponse<unknown[]>> {
+    async getHistory(options?: {
+      status?: string;
+      limit?: number;
+      offset?: number;
+    }): Promise<ApiResponse<unknown[]>> {
       const params = new URLSearchParams();
       if (options?.status) params.set('status', options.status);
       if (options?.limit) params.set('limit', String(options.limit));
@@ -772,7 +831,12 @@ export const api = {
     /**
      * Get employees with document status
      */
-    async getEmployees(options?: { type?: string; period?: string; limit?: number; offset?: number }): Promise<ApiResponse<EmployeeDocument[]>> {
+    async getEmployees(options?: {
+      type?: string;
+      period?: string;
+      limit?: number;
+      offset?: number;
+    }): Promise<ApiResponse<EmployeeDocument[]>> {
       const params = new URLSearchParams();
       if (options?.type) params.set('type', options.type);
       if (options?.period) params.set('period', options.period);
@@ -792,7 +856,11 @@ export const api = {
     /**
      * Generate document batch
      */
-    async generate(params: { type: 'payslip' | 'ea-form'; period: string; employeeIds?: string[] }): Promise<ApiResponse<DocumentBatch>> {
+    async generate(params: {
+      type: 'payslip' | 'ea-form';
+      period: string;
+      employeeIds?: string[];
+    }): Promise<ApiResponse<DocumentBatch>> {
       return request<DocumentBatch>('/api/documents/generate', {
         method: 'POST',
         body: JSON.stringify(params),
@@ -823,7 +891,11 @@ export const api = {
     /**
      * Download batch of documents
      */
-    async downloadBatch(params: { type: 'payslip' | 'ea-form'; period: string; employeeIds: string[] }): Promise<ApiResponse<{ downloadUrl: string; documentCount: number }>> {
+    async downloadBatch(params: {
+      type: 'payslip' | 'ea-form';
+      period: string;
+      employeeIds: string[];
+    }): Promise<ApiResponse<{ downloadUrl: string; documentCount: number }>> {
       return request('/api/documents/download-batch', {
         method: 'POST',
         body: JSON.stringify(params),
@@ -833,10 +905,98 @@ export const api = {
     /**
      * Broadcast documents via WhatsApp/Email
      */
-    async broadcast(params: { channel?: 'whatsapp' | 'email'; employeeIds?: string[] }): Promise<ApiResponse<{ channel: string; recipientCount: number; queuedAt: string }>> {
+    async broadcast(params: {
+      channel?: 'whatsapp' | 'email';
+      employeeIds?: string[];
+    }): Promise<ApiResponse<{ channel: string; recipientCount: number; queuedAt: string }>> {
       return request('/api/documents/broadcast', {
         method: 'POST',
         body: JSON.stringify(params),
+      });
+    },
+  },
+
+  // ==========================================================================
+  // LEAVE MODULE
+  // ==========================================================================
+
+  leave: {
+    /**
+     * Get active leave types from master table
+     */
+    async getTypes(): Promise<ApiResponse<LeaveType[]>> {
+      return request('/api/leave/types');
+    },
+
+    /**
+     * Get current user's leave balances
+     */
+    async getBalance(): Promise<ApiResponse<LeaveBalance[]>> {
+      return request('/api/leave/balance');
+    },
+
+    /**
+     * Get current user's leave requests
+     */
+    async getRequests(params?: {
+      status?: string;
+      year?: number;
+    }): Promise<ApiResponse<LeaveRequest[]>> {
+      const query = new URLSearchParams();
+      if (params?.status) query.set('status', params.status);
+      if (params?.year) query.set('year', String(params.year));
+      const queryStr = query.toString();
+      return request(`/api/leave${queryStr ? `?${queryStr}` : ''}`);
+    },
+
+    /**
+     * Apply for leave
+     */
+    async apply(params: {
+      leaveTypeCode: string;
+      startDate: string;
+      endDate: string;
+      reason?: string;
+      halfDayStart?: boolean;
+      halfDayEnd?: boolean;
+    }): Promise<ApiResponse<{ id: string; daysRequested: number; status: string }>> {
+      return request('/api/leave', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      });
+    },
+
+    /**
+     * Cancel own pending leave request
+     */
+    async cancel(id: string): Promise<ApiResponse<void>> {
+      return request(`/api/leave/${id}/cancel`, { method: 'PUT' });
+    },
+
+    /**
+     * Get pending leave requests for approval (Manager/Admin)
+     */
+    async getPending(): Promise<ApiResponse<LeaveRequest[]>> {
+      return request('/api/leave/pending');
+    },
+
+    /**
+     * Approve leave request (Manager/Admin)
+     */
+    async approve(id: string, notes?: string): Promise<ApiResponse<void>> {
+      return request(`/api/leave/${id}/approve`, {
+        method: 'PUT',
+        body: JSON.stringify({ notes }),
+      });
+    },
+
+    /**
+     * Reject leave request (Manager/Admin)
+     */
+    async reject(id: string, notes?: string): Promise<ApiResponse<void>> {
+      return request(`/api/leave/${id}/reject`, {
+        method: 'PUT',
+        body: JSON.stringify({ notes }),
       });
     },
   },
@@ -865,4 +1025,7 @@ export type {
   PayslipData,
   PayslipPdfData,
   EaFormData,
+  LeaveType,
+  LeaveBalance,
+  LeaveRequest,
 };

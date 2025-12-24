@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import DashboardScreen from './screens/DashboardScreen';
 import PayrollCockpitScreen from './screens/PayrollCockpitScreen';
@@ -10,6 +9,12 @@ import OnboardingScreen from './screens/OnboardingScreen';
 import TravelScreen from './screens/TravelScreen';
 import ProjectCostingScreen from './screens/ProjectCostingScreen';
 import TrainingScreen from './screens/TrainingScreen';
+import LeaveScreen from './screens/LeaveScreen';
+import HierarchyBuilderScreen from './screens/HierarchyBuilderScreen';
+import LeavePolicyScreen from './screens/LeavePolicyScreen';
+import EntitlementScreen from './screens/EntitlementScreen';
+import EscalationsScreen from './screens/EscalationsScreen';
+import AuditLogsScreen from './screens/AuditLogsScreen';
 import LoginScreen from './screens/LoginScreen';
 import Layout from './src/components/Layout';
 import { api } from './src/lib/api';
@@ -24,13 +29,19 @@ export type Screen =
   | 'Onboarding'
   | 'Travel'
   | 'ProjectCosting'
-  | 'Training';
+  | 'Training'
+  | 'Leave'
+  | 'HierarchyBuilder'
+  | 'LeavePolicy'
+  | 'Entitlements'
+  | 'Escalations'
+  | 'AuditLogs';
 
 export interface ScreenProps {
   onNavigate: (screen: Screen) => void;
 }
 
-const screens: { id: Screen, name: string }[] = [
+const screens: { id: Screen; name: string }[] = [
   { id: 'Dashboard', name: 'Dashboard' },
   { id: 'Payroll', name: 'Payroll Cockpit' },
   { id: 'Attendance', name: 'Attendance Intervention' },
@@ -41,6 +52,12 @@ const screens: { id: Screen, name: string }[] = [
   { id: 'Travel', name: 'Travel & Expense' },
   { id: 'ProjectCosting', name: 'Project Costing' },
   { id: 'Training', name: 'Training' },
+  { id: 'Leave', name: 'Leave (Cuti)' },
+  { id: 'HierarchyBuilder', name: 'Org Hierarchy' },
+  { id: 'LeavePolicy', name: 'Leave Policy' },
+  { id: 'Entitlements', name: 'Entitlements' },
+  { id: 'Escalations', name: 'Escalations' },
+  { id: 'AuditLogs', name: 'Audit Logs' },
 ];
 
 const App: React.FC = () => {
@@ -81,7 +98,7 @@ const App: React.FC = () => {
             role = user.role;
           }
         } catch (e) {
-          console.error("Failed to parse user role", e);
+          console.error('Failed to parse user role', e);
           localStorage.removeItem('user');
         }
       }
@@ -90,11 +107,11 @@ const App: React.FC = () => {
       try {
         const freshUser = await api.auth.me();
         if (freshUser && freshUser.role) {
-          console.log("[App.tsx] Role from server:", freshUser.role);
+          console.log('[App.tsx] Role from server:', freshUser.role);
           role = freshUser.role;
         }
       } catch (err) {
-        console.warn("[App.tsx] Failed to sync role with server, using cached:", role);
+        console.warn('[App.tsx] Failed to sync role with server, using cached:', role);
       }
 
       setUserRole(role);
@@ -164,13 +181,30 @@ const App: React.FC = () => {
         return <ProjectCostingScreen onNavigate={setActiveScreen} />;
       case 'Training':
         return <TrainingScreen onNavigate={setActiveScreen} />;
+      case 'Leave':
+        return <LeaveScreen onNavigate={setActiveScreen} userRole={userRole} />;
+      case 'HierarchyBuilder':
+        return <HierarchyBuilderScreen onNavigate={setActiveScreen} userRole={userRole} />;
+      case 'LeavePolicy':
+        return <LeavePolicyScreen onNavigate={setActiveScreen} />;
+      case 'Entitlements':
+        return <EntitlementScreen onNavigate={setActiveScreen} />;
+      case 'Escalations':
+        return <EscalationsScreen onNavigate={setActiveScreen} />;
+      case 'AuditLogs':
+        return <AuditLogsScreen onNavigate={setActiveScreen} />;
       default:
         return <DashboardScreen onNavigate={setActiveScreen} userRole={userRole} />;
     }
   };
 
   return (
-    <Layout activeScreen={activeScreen} onNavigate={setActiveScreen} onLogout={handleLogout} role={userRole}>
+    <Layout
+      activeScreen={activeScreen}
+      onNavigate={setActiveScreen}
+      onLogout={handleLogout}
+      role={userRole}
+    >
       {renderScreen()}
     </Layout>
   );

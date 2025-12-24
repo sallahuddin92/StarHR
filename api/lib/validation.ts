@@ -40,30 +40,27 @@ export type ClockInRequest = z.infer<typeof ClockInSchema>;
  * Run Draft Payroll Request Schema
  * POST /api/payroll/run-draft
  */
-export const RunDraftPayrollSchema = z.object({
-  basicStartDate: z.string().regex(
-    /^\d{4}-\d{2}-\d{2}$/,
-    'Invalid date format (YYYY-MM-DD required)'
-  ),
-  basicEndDate: z.string().regex(
-    /^\d{4}-\d{2}-\d{2}$/,
-    'Invalid date format (YYYY-MM-DD required)'
-  ),
-  otStartDate: z.string().regex(
-    /^\d{4}-\d{2}-\d{2}$/,
-    'Invalid date format (YYYY-MM-DD required)'
-  ),
-  otEndDate: z.string().regex(
-    /^\d{4}-\d{2}-\d{2}$/,
-    'Invalid date format (YYYY-MM-DD required)'
-  ),
-}).refine(
-  (data) => new Date(data.basicStartDate) <= new Date(data.basicEndDate),
-  { message: 'basicStartDate must be before or equal to basicEndDate', path: ['basicStartDate'] }
-).refine(
-  (data) => new Date(data.otStartDate) <= new Date(data.otEndDate),
-  { message: 'otStartDate must be before or equal to otEndDate', path: ['otStartDate'] }
-);
+export const RunDraftPayrollSchema = z
+  .object({
+    basicStartDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD required)'),
+    basicEndDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD required)'),
+    otStartDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD required)'),
+    otEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD required)'),
+  })
+  .refine(data => new Date(data.basicStartDate) <= new Date(data.basicEndDate), {
+    message: 'basicStartDate must be before or equal to basicEndDate',
+    path: ['basicStartDate'],
+  })
+  .refine(data => new Date(data.otStartDate) <= new Date(data.otEndDate), {
+    message: 'otStartDate must be before or equal to otEndDate',
+    path: ['otStartDate'],
+  });
 
 export type RunDraftPayrollRequest = z.infer<typeof RunDraftPayrollSchema>;
 
@@ -77,7 +74,8 @@ export type RunDraftPayrollRequest = z.infer<typeof RunDraftPayrollSchema>;
  */
 export const EWARequestSchema = z.object({
   employeeId: z.string().uuid('Invalid employee ID format'),
-  amount: z.number()
+  amount: z
+    .number()
     .positive('Amount must be positive')
     .max(100000, 'Amount exceeds maximum limit'),
 });
@@ -89,13 +87,12 @@ export type EWARequestInput = z.infer<typeof EWARequestSchema>;
  * PUT /api/ewa/:id/approve
  */
 export const EWAApproveSchema = z.object({
-  approvedAmount: z.number()
+  approvedAmount: z
+    .number()
     .positive('Approved amount must be positive')
     .max(100000, 'Amount exceeds maximum limit')
     .optional(), // If not provided, uses requested amount
-  notes: z.string()
-    .max(500, 'Notes cannot exceed 500 characters')
-    .optional(),
+  notes: z.string().max(500, 'Notes cannot exceed 500 characters').optional(),
 });
 
 export type EWAApproveInput = z.infer<typeof EWAApproveSchema>;
@@ -105,7 +102,8 @@ export type EWAApproveInput = z.infer<typeof EWAApproveSchema>;
  * PUT /api/ewa/:id/reject
  */
 export const EWARejectSchema = z.object({
-  reason: z.string()
+  reason: z
+    .string()
     .min(5, 'Rejection reason must be at least 5 characters')
     .max(500, 'Rejection reason cannot exceed 500 characters')
     .transform(val => val.trim()) // Sanitize whitespace
@@ -134,16 +132,13 @@ type ValidationResult<T> = ValidationSuccess<T> | ValidationFailure;
  * Validate request body against a Zod schema
  * Returns parsed data or throws formatted error
  */
-export function validateRequest<T>(
-  schema: z.ZodSchema<T>,
-  data: unknown
-): ValidationResult<T> {
+export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): ValidationResult<T> {
   const result = schema.safeParse(data);
-  
+
   if (result.success) {
     return { success: true, data: result.data };
   }
-  
+
   return { success: false, errors: result.error.errors };
 }
 
@@ -154,7 +149,7 @@ export function formatZodErrors(errors: z.ZodError['errors']): {
   field: string;
   message: string;
 }[] {
-  return errors.map((error) => ({
+  return errors.map(error => ({
     field: error.path.join('.'),
     message: error.message,
   }));

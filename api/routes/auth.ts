@@ -9,9 +9,8 @@ import { signAuthToken, UserRole } from '../middleware/auth';
 // ============================================================================
 
 const SALT_ROUNDS = 10;
-const DEV_FALLBACK_PASSWORD = process.env.NODE_ENV === 'production'
-  ? undefined
-  : (process.env.DEV_PASSWORD || 'password123');
+const DEV_FALLBACK_PASSWORD =
+  process.env.NODE_ENV === 'production' ? undefined : process.env.DEV_PASSWORD || 'password123';
 
 // ============================================================================
 // SCHEMAS
@@ -41,7 +40,7 @@ authRouter.post('/login', async (req: Request, res: Response) => {
     if (!parseResult.success) {
       return res.status(400).json({
         error: 'Validation Error',
-        details: parseResult.error.format()
+        details: parseResult.error.format(),
       });
     }
 
@@ -91,9 +90,8 @@ authRouter.post('/login', async (req: Request, res: Response) => {
     }
 
     // Determine user role
-    const role: UserRole = (user.role as UserRole) ||
-      (process.env.DEFAULT_ROLE as UserRole) ||
-      'WORKER';
+    const role: UserRole =
+      (user.role as UserRole) || (process.env.DEFAULT_ROLE as UserRole) || 'WORKER';
 
     // Generate JWT token
     const token = signAuthToken({
@@ -138,7 +136,7 @@ authRouter.post('/hash-password', async (req: Request, res: Response) => {
     return res.json({
       success: true,
       hash,
-      usage: `UPDATE employee_master SET password_hash = '${hash}' WHERE employee_id = 'EMP001';`
+      usage: `UPDATE employee_master SET password_hash = '${hash}' WHERE employee_id = 'EMP001';`,
     });
   } catch (err) {
     console.error('Hash error:', err);
@@ -182,10 +180,10 @@ authRouter.get('/me', (req: Request, res: Response) => {
         id: decoded.userId,
         tenantId: decoded.tenantId,
         role: decoded.role,
-        // Add dummy identifier/email if not in token, or fetch from DB if critical. 
+        // Add dummy identifier/email if not in token, or fetch from DB if critical.
         // For Dashboard role check, 'role' is the only thing that matters.
-        role_source: 'token_check'
-      }
+        role_source: 'token_check',
+      },
     });
   } catch (e) {
     return res.status(401).json({ error: 'Invalid token' });

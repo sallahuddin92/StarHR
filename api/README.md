@@ -38,13 +38,13 @@ Records employee clock-in/clock-out with double-punch protection.
 
 **Responses:**
 
-| Status | Description |
-|--------|-------------|
-| 201 | Clock-in recorded successfully |
-| 200 | Clock-out recorded successfully |
-| 400 | Validation error |
-| 404 | Employee not found |
-| 429 | Double punch detected (within 5-minute window) |
+| Status | Description                                    |
+| ------ | ---------------------------------------------- |
+| 201    | Clock-in recorded successfully                 |
+| 200    | Clock-out recorded successfully                |
+| 400    | Validation error                               |
+| 404    | Employee not found                             |
+| 429    | Double punch detected (within 5-minute window) |
 
 **Example Success Response (201):**
 
@@ -109,11 +109,11 @@ Generate a draft payroll run with statutory deductions calculated.
 
 ```json
 {
-  "tenantId": "uuid",              // Required: Tenant UUID
-  "basicStartDate": "YYYY-MM-DD",  // Required: Basic salary period start
-  "basicEndDate": "YYYY-MM-DD",    // Required: Basic salary period end
-  "otStartDate": "YYYY-MM-DD",     // Required: Overtime period start
-  "otEndDate": "YYYY-MM-DD"        // Required: Overtime period end
+  "tenantId": "uuid", // Required: Tenant UUID
+  "basicStartDate": "YYYY-MM-DD", // Required: Basic salary period start
+  "basicEndDate": "YYYY-MM-DD", // Required: Basic salary period end
+  "otStartDate": "YYYY-MM-DD", // Required: Overtime period start
+  "otEndDate": "YYYY-MM-DD" // Required: Overtime period end
 }
 ```
 
@@ -133,26 +133,26 @@ Generate a draft payroll run with statutory deductions calculated.
     },
     "summary": {
       "totalEmployees": 50,
-      "totalGross": 250000.00,
-      "totalDeductions": 45000.00,
-      "totalNet": 205000.00,
-      "totalPCB": 15000.00,
-      "totalEPF": 25000.00,
-      "totalSOCSO": 5000.00
+      "totalGross": 250000.0,
+      "totalDeductions": 45000.0,
+      "totalNet": 205000.0,
+      "totalPCB": 15000.0,
+      "totalEPF": 25000.0,
+      "totalSOCSO": 5000.0
     },
     "employees": [
       {
         "employeeId": "uuid",
         "employeeName": "Ahmad bin Abdullah",
-        "basicSalary": 5000.00,
+        "basicSalary": 5000.0,
         "regularHours": 176,
         "overtimeHours": 20,
         "overtimeAmount": 721.15,
         "grossAmount": 5721.15,
         "deductions": {
-          "pcb": 347.50,
+          "pcb": 347.5,
           "epf": 629.33,
-          "socso": 195.00,
+          "socso": 195.0,
           "total": 1171.83
         },
         "netAmount": 4549.32
@@ -175,10 +175,10 @@ Get payroll runs for a tenant.
 
 **Query Parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| status | string | - | Filter by status |
-| limit | number | 10 | Max results |
+| Parameter | Type   | Default | Description      |
+| --------- | ------ | ------- | ---------------- |
+| status    | string | -       | Filter by status |
+| limit     | number | 10      | Max results      |
 
 ---
 
@@ -214,9 +214,9 @@ Submit an EWA withdrawal request.
   "data": {
     "transactionId": "uuid",
     "employeeId": "uuid",
-    "requestedAmount": 500.00,
-    "accruedSalary": 2500.00,
-    "safeLimit": 1250.00,
+    "requestedAmount": 500.0,
+    "accruedSalary": 2500.0,
+    "safeLimit": 1250.0,
     "status": "PENDING",
     "createdAt": "2025-12-19T10:30:00.000Z"
   }
@@ -232,13 +232,13 @@ Submit an EWA withdrawal request.
   "message": "Requested amount (RM 1500.00) exceeds your available limit (RM 750.00).",
   "code": "INSUFFICIENT_FUNDS",
   "data": {
-    "requestedAmount": 1500.00,
+    "requestedAmount": 1500.0,
     "daysWorked": 15,
     "dailyRate": 192.31,
     "accruedSalary": 2884.65,
     "safeLimit": 1442.32,
     "ytdWithdrawn": 692.32,
-    "remainingLimit": 750.00,
+    "remainingLimit": 750.0,
     "safePercentage": 50
   }
 }
@@ -260,7 +260,7 @@ Get EWA balance and eligibility for an employee.
     "dailyRate": 192.31,
     "accruedSalary": 2884.65,
     "safeLimit": 1442.32,
-    "ytdWithdrawn": 500.00,
+    "ytdWithdrawn": 500.0,
     "availableBalance": 942.32,
     "monthlyRequestCount": 2,
     "maxMonthlyRequests": 4,
@@ -276,10 +276,10 @@ Get EWA transaction history.
 
 **Query Parameters:**
 
-| Parameter | Type | Default |
-|-----------|------|---------|
-| limit | number | 20 |
-| offset | number | 0 |
+| Parameter | Type   | Default |
+| --------- | ------ | ------- |
+| limit     | number | 20      |
+| offset    | number | 0       |
 
 ---
 
@@ -308,15 +308,15 @@ All inputs are validated using **Zod** schemas. Validation errors return:
 
 ## Error Codes
 
-| Code | Description |
-|------|-------------|
-| `EMPLOYEE_NOT_FOUND` | Employee ID not found or inactive |
-| `TENANT_NOT_FOUND` | Tenant ID not found or inactive |
-| `DOUBLE_PUNCH` | Clock punch within 5-minute debounce window |
-| `INSUFFICIENT_FUNDS` | EWA amount exceeds safe limit |
-| `MAX_REQUESTS_EXCEEDED` | Monthly EWA request limit reached |
-| `NO_SALARY_CONFIG` | Employee has no salary configuration |
-| `NO_EMPLOYEES` | No active employees found for tenant |
+| Code                    | Description                                 |
+| ----------------------- | ------------------------------------------- |
+| `EMPLOYEE_NOT_FOUND`    | Employee ID not found or inactive           |
+| `TENANT_NOT_FOUND`      | Tenant ID not found or inactive             |
+| `DOUBLE_PUNCH`          | Clock punch within 5-minute debounce window |
+| `INSUFFICIENT_FUNDS`    | EWA amount exceeds safe limit               |
+| `MAX_REQUESTS_EXCEEDED` | Monthly EWA request limit reached           |
+| `NO_SALARY_CONFIG`      | Employee has no salary configuration        |
+| `NO_EMPLOYEES`          | No active employees found for tenant        |
 
 ---
 

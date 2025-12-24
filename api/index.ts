@@ -2,7 +2,7 @@
  * Enterprise HR Portal - API Server
  * Express.js Backend with Zod Validation
  * Date: 2025-12-19
- * 
+ *
  * Production-ready with security middleware enabled
  */
 
@@ -19,6 +19,9 @@ import { statsRouter } from './routes/stats';
 import { approvalsRouter } from './routes/approvals';
 import { documentsRouter } from './routes/documents';
 import authRouter from './routes/auth';
+import { leaveRouter } from './routes/leave';
+import hierarchyRouter from './routes/hierarchy';
+import trainingRouter from './routes/training';
 import { authenticateToken } from './middleware/auth';
 
 const app = express();
@@ -50,10 +53,12 @@ if (isProduction) {
 // ============================================================================
 
 // Helmet - Set secure HTTP headers
-app.use(helmet({
-  contentSecurityPolicy: isProduction ? undefined : false, // Disable CSP in dev for hot reload
-  crossOriginEmbedderPolicy: false, // Allow embedding PDFs
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: isProduction ? undefined : false, // Disable CSP in dev for hot reload
+    crossOriginEmbedderPolicy: false, // Allow embedding PDFs
+  })
+);
 
 // Rate limiting - Prevent brute force attacks
 const limiter = rateLimit({
@@ -84,24 +89,28 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:3002',
   'http://localhost:5173',
   'http://localhost:8082',
+  'http://192.168.137.157:3000',
+  'http://192.168.137.157:3001',
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`CORS blocked request from origin: ${origin}`);
-      callback(null, false);
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn(`CORS blocked request from origin: ${origin}`);
+        callback(null, false);
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 
 // Body parser with size limit (prevent large payload attacks)
 app.use(express.json({ limit: '10kb' }));
@@ -131,6 +140,9 @@ app.use('/api/employees', authenticateToken, employeesRouter);
 app.use('/api/stats', authenticateToken, statsRouter);
 app.use('/api/approvals', authenticateToken, approvalsRouter);
 app.use('/api/documents', authenticateToken, documentsRouter);
+app.use('/api/leave', authenticateToken, leaveRouter);
+app.use('/api/hierarchy', authenticateToken, hierarchyRouter);
+app.use('/api/training', authenticateToken, trainingRouter);
 
 // Health check endpoint
 app.get('/api/health', (_req: Request, res: Response) => {
@@ -151,7 +163,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Unhandled error:', err);
   res.status(500).json({
     error: 'Internal Server Error',
-    message: isProduction ? undefined : err.message
+    message: isProduction ? undefined : err.message,
   });
 });
 
@@ -159,12 +171,16 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 // SERVER START
 // ============================================================================
 
-app.listen(PORT, () => {
-  console.log(`🚀 API Server running on http://localhost:${PORT}`);
-  console.log(`   Environment: ${isProduction ? 'PRODUCTION' : 'development'}`);
-  if (!isProduction) {
-    console.log('   ⚠️  Development mode - security checks relaxed');
-  }
-});
+// Only start the server if not being imported for tests
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🚀 API Server running on http://localhost:${PORT}`);
+    console.log(`   Environment: ${isProduction ? 'PRODUCTION' : 'development'}`);
+    if (!isProduction) {
+      console.log('   ⚠️  Development mode - security checks relaxed');
+    }
+  });
+}
 
+// Export app for testing with Supertest
 export default app;

@@ -1,0 +1,51 @@
+Employee_Code,Full_Name,Department_Code,Position_Title,Hierarchy_Level,Reports_To_Code,Can_Approve_Leave
+EMP001,Ahmad Ibrahim,IT,Chief Technology Officer,1,,Yes
+EMP002,Nurul Huda,HR,HR Director,2,EMP001,Yes
+EMP003,Mohd Faiz,FIN,Finance Director,2,EMP001,Yes
+EMP004,Siti Aminah,OPS,Operations Director,2,EMP001,Yes
+EMP005,Lee Wei Ming,SALES,Sales Director,2,EMP001,Yes
+EMP006,Tan Mei Ling,IT,Engineering Manager,4,EMP001,Yes
+EMP007,Raj Kumar,IT,DevOps Manager,4,EMP001,Yes
+EMP008,Amirah Yusof,HR,HR Manager,4,EMP002,Yes
+EMP009,Wong Chee Keong,FIN,Finance Manager,4,EMP003,Yes
+EMP010,Fatimah Zahra,OPS,Operations Manager,4,EMP004,Yes
+EMP011,David Lim,SALES,Sales Manager,4,EMP005,Yes
+EMP012,Hafizah Rahman,IT,Senior Software Engineer,5,EMP006,No
+EMP013,Muhammad Aziz,IT,Senior Software Engineer,5,EMP006,No
+EMP014,Chen Wei Lin,IT,DevOps Engineer,5,EMP007,No
+EMP015,Priya Devi,IT,QA Lead,5,EMP006,Yes
+EMP016,Zulkifli Hassan,HR,HR Executive,5,EMP008,No
+EMP017,Ng Siew Mei,HR,Recruitment Specialist,5,EMP008,No
+EMP018,Kamal Ariffin,FIN,Senior Accountant,5,EMP009,No
+EMP019,Syafiqah Omar,FIN,Accountant,5,EMP009,No
+EMP020,Loh Kean Yew,OPS,Logistics Supervisor,5,EMP010,Yes
+EMP021,Norashikin Ismail,OPS,Quality Control,5,EMP010,No
+EMP022,Vincent Tan,SALES,Senior Sales Executive,5,EMP011,No
+EMP023,Aishah Binti Ali,SALES,Sales Executive,5,EMP011,No
+EMP024,Jason Ong,IT,Software Engineer,6,EMP012,No
+EMP025,Nur Aisyah,IT,Software Engineer,6,EMP012,No
+EMP026,Kumar Rajan,IT,Software Engineer,6,EMP013,No
+EMP027,Lim Hui Ying,IT,Junior Developer,6,EMP012,No
+EMP028,Haziq Nizam,IT,Junior Developer,6,EMP013,No
+EMP029,Sarah Abdullah,IT,QA Engineer,6,EMP015,No
+EMP030,Alvin Chong,IT,QA Engineer,6,EMP015,No
+EMP031,Nabila Harun,HR,HR Assistant,6,EMP016,No
+EMP032,Rizal Mansor,HR,Training Coordinator,6,EMP017,No
+EMP033,Emily Wong,FIN,Junior Accountant,6,EMP018,No
+EMP034,Hafiz Jamaludin,FIN,Accounts Clerk,6,EMP019,No
+EMP035,Mei Fen Koh,OPS,Warehouse Executive,6,EMP020,No
+EMP036,Azlan Shah,OPS,Warehouse Assistant,6,EMP020,No
+EMP037,Jessica Lau,SALES,Sales Associate,6,EMP022,No
+EMP038,Imran Hussain,SALES,Sales Associate,6,EMP023,No
+EMP039,Chong Wei Jie,IT,Intern - Development,6,EMP027,No
+EMP040,Anis Sofea,IT,Intern - Development,6,EMP028,No
+EMP041,Daniel Foo,IT,Intern - QA,6,EMP029,No
+EMP042,Nurul Ain,HR,Intern - HR,6,EMP031,No
+EMP043,Marcus Lee,FIN,Intern - Finance,6,EMP033,No
+EMP044,Aina Mardhiah,OPS,Intern - Operations,6,EMP035,No
+EMP045,Bryan Tan,SALES,Intern - Sales,6,EMP037,No
+EMP046,Farah Izzati,IT,Contract Developer,6,EMP013,No
+EMP047,Kevin Ng,IT,Contract Developer,6,EMP012,No
+EMP048,Aisyah Roslan,HR,Part-time HR,6,EMP016,No
+EMP049,Samuel Wong,FIN,Part-time Accountant,6,EMP018,No
+EMP050,Zara Ismail,OPS,Part-time Coordinator,6,EMP021,No

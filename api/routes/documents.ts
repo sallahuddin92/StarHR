@@ -9,7 +9,6 @@ import { z } from 'zod';
 import { generatePayslipPDF, generatePayrollLedgerPDF, PayrollItem } from '../lib/pdf-generator';
 import { Employee } from '../../shared/types';
 
-
 export const documentsRouter = Router();
 
 // ============================================================================
@@ -397,7 +396,10 @@ documentsRouter.get('/:employeeId/payslip/:period/pdf', async (req: Request, res
         department: emp.department || 'General',
         designation: emp.designation || 'Staff',
         period,
-        periodDisplay: new Date(period + '-01').toLocaleDateString('en-MY', { month: 'long', year: 'numeric' }),
+        periodDisplay: new Date(period + '-01').toLocaleDateString('en-MY', {
+          month: 'long',
+          year: 'numeric',
+        }),
         earnings: {
           basicSalary,
           allowances: 0,
@@ -482,7 +484,7 @@ documentsRouter.get('/:employeeId/ea-form/:year', async (req: Request, res: Resp
         employerName: 'Star Corporation Sdn Bhd',
         employerAddress: '123 Business Park, Kuala Lumpur, 50450, Malaysia',
 
-        // Part B - Employee Details  
+        // Part B - Employee Details
         employeeNo: emp.employee_id,
         employeeName: emp.full_name,
         icNo: emp.ic_no || 'Not Available',
@@ -558,7 +560,6 @@ documentsRouter.post('/download-batch', async (req: Request, res: Response) => {
   }
 });
 
-
 // ============================================================================
 // GET /api/documents/payslip/:id/download - Download Payslip PDF
 // ============================================================================
@@ -571,7 +572,9 @@ documentsRouter.get('/payslip/:id/download', async (req: Request, res: Response)
     }
     const payrollItem = items[0] as PayrollItem;
 
-    const { rows: employees } = await query('SELECT * FROM employee_master WHERE id = $1', [(payrollItem as any).employee_id || payrollItem.employeeId]);
+    const { rows: employees } = await query('SELECT * FROM employee_master WHERE id = $1', [
+      (payrollItem as any).employee_id || payrollItem.employeeId,
+    ]);
     if (employees.length === 0) {
       return res.status(404).json({ success: false, message: 'Employee not found' });
     }
@@ -582,13 +585,11 @@ documentsRouter.get('/payslip/:id/download', async (req: Request, res: Response)
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=payslip-${employee.employeeId}.pdf`);
     res.send(pdfBuffer);
-
   } catch (err) {
     console.error('Payslip download error:', err);
     return res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 });
-
 
 // ============================================================================
 // GET /api/documents/ledger/:runId/download - Download Payroll Ledger PDF
@@ -601,7 +602,6 @@ documentsRouter.get('/ledger/:runId/download', async (req: Request, res: Respons
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=payroll-ledger-${runId}.pdf`);
     res.send(pdfBuffer);
-
   } catch (err) {
     console.error('Ledger download error:', err);
     return res.status(500).json({ success: false, error: 'Internal Server Error' });

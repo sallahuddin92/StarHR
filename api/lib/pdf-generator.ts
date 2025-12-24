@@ -1,4 +1,3 @@
-
 import PDFDocument from 'pdfkit';
 import { PayrollRun, Employee } from '../../shared/types';
 import { query } from './db';
@@ -39,7 +38,10 @@ export interface PayrollItem {
   updatedAt: string;
 }
 
-export async function generatePayslipPDF(payrollItem: PayrollItem, employee: Employee): Promise<Buffer> {
+export async function generatePayslipPDF(
+  payrollItem: PayrollItem,
+  employee: Employee
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     // Password protection using last 6 digits of NRIC
     const password = employee.nric ? employee.nric.slice(-6) : '123456';
@@ -85,32 +87,46 @@ export async function generatePayslipPDF(payrollItem: PayrollItem, employee: Emp
     doc.text(`Bonus: RM ${payrollItem.bonus.toFixed(2)}`);
     doc.text(`Other Earnings: RM ${payrollItem.otherEarnings.toFixed(2)}`);
     doc.moveDown();
-    doc.fontSize(12).font('Helvetica-Bold').text(`Gross Pay: RM ${payrollItem.grossAmount.toFixed(2)}`);
+    doc
+      .fontSize(12)
+      .font('Helvetica-Bold')
+      .text(`Gross Pay: RM ${payrollItem.grossAmount.toFixed(2)}`);
     doc.moveDown();
 
     // Deductions
     doc.fontSize(14).text('Deductions');
     doc.lineCap('butt').moveTo(72, doc.y).lineTo(523, doc.y).stroke();
     doc.moveDown();
-    doc.fontSize(10).font('Helvetica').text(`EPF: RM ${payrollItem.epfEmployee.toFixed(2)}`);
+    doc
+      .fontSize(10)
+      .font('Helvetica')
+      .text(`EPF: RM ${payrollItem.epfEmployee.toFixed(2)}`);
     doc.text(`SOCSO: RM ${payrollItem.socso.toFixed(2)}`);
     doc.text(`PCB (Income Tax): RM ${payrollItem.pcbTax.toFixed(2)}`);
     doc.text(`EWA Deductions: RM ${payrollItem.ewaDeductions.toFixed(2)}`);
     doc.text(`Loan Deductions: RM ${payrollItem.loanDeductions.toFixed(2)}`);
     doc.text(`Other Deductions: RM ${payrollItem.otherDeductions.toFixed(2)}`);
     doc.moveDown();
-    doc.fontSize(12).font('Helvetica-Bold').text(`Total Deductions: RM ${payrollItem.totalDeductions.toFixed(2)}`);
+    doc
+      .fontSize(12)
+      .font('Helvetica-Bold')
+      .text(`Total Deductions: RM ${payrollItem.totalDeductions.toFixed(2)}`);
     doc.moveDown();
 
     // Net Pay
-    doc.fontSize(16).font('Helvetica-Bold').text(`Net Pay: RM ${payrollItem.netAmount.toFixed(2)}`, { align: 'right' });
+    doc
+      .fontSize(16)
+      .font('Helvetica-Bold')
+      .text(`Net Pay: RM ${payrollItem.netAmount.toFixed(2)}`, { align: 'right' });
 
     doc.end();
   });
 }
 
 export async function generatePayrollLedgerPDF(payrollRunId: string): Promise<Buffer> {
-  const { rows: items } = await query('SELECT * FROM payroll_items WHERE payroll_run_id = $1', [payrollRunId]);
+  const { rows: items } = await query('SELECT * FROM payroll_items WHERE payroll_run_id = $1', [
+    payrollRunId,
+  ]);
   const payrollItems = items as PayrollItem[];
 
   let totalGross = 0;
@@ -171,7 +187,6 @@ export async function generatePayrollLedgerPDF(payrollRunId: string): Promise<Bu
     doc.text(`RM ${totalDeductions.toFixed(2)}`, deductionsX, totalY);
     doc.text(`RM ${totalNet.toFixed(2)}`, netX, totalY, { width: 100, align: 'right' });
     doc.font('Helvetica');
-
 
     doc.end();
   });

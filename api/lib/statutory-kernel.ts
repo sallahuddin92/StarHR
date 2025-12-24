@@ -46,11 +46,11 @@ const TAX_SCHEDULE: TaxSchedule = {
   B: [
     { minIncome: 0, maxIncome: 2150, baseRate: 0, taxRate: 0 },
     { minIncome: 2150, maxIncome: 2600, baseRate: 0, taxRate: 0.01 },
-    { minIncome: 2600, maxIncome: 3200, baseRate: 4.50, taxRate: 0.03 },
-    { minIncome: 3200, maxIncome: 4000, baseRate: 22.50, taxRate: 0.05 },
-    { minIncome: 4000, maxIncome: 5500, baseRate: 62.50, taxRate: 0.08 },
-    { minIncome: 5500, maxIncome: 7000, baseRate: 182.50, taxRate: 0.11 },
-    { minIncome: 7000, maxIncome: 8500, baseRate: 347.50, taxRate: 0.135 },
+    { minIncome: 2600, maxIncome: 3200, baseRate: 4.5, taxRate: 0.03 },
+    { minIncome: 3200, maxIncome: 4000, baseRate: 22.5, taxRate: 0.05 },
+    { minIncome: 4000, maxIncome: 5500, baseRate: 62.5, taxRate: 0.08 },
+    { minIncome: 5500, maxIncome: 7000, baseRate: 182.5, taxRate: 0.11 },
+    { minIncome: 7000, maxIncome: 8500, baseRate: 347.5, taxRate: 0.135 },
     { minIncome: 8500, maxIncome: 10000, baseRate: 549.25, taxRate: 0.16 },
     { minIncome: 10000, maxIncome: Infinity, baseRate: 789.25, taxRate: 0.19 },
   ],
@@ -86,12 +86,12 @@ const TAX_SCHEDULE: TaxSchedule = {
     { minIncome: 0, maxIncome: 2150, baseRate: 0, taxRate: 0 },
     { minIncome: 2150, maxIncome: 2650, baseRate: 0, taxRate: 0.01 },
     { minIncome: 2650, maxIncome: 3300, baseRate: 5, taxRate: 0.03 },
-    { minIncome: 3300, maxIncome: 4200, baseRate: 24.50, taxRate: 0.05 },
-    { minIncome: 4200, maxIncome: 5800, baseRate: 69.50, taxRate: 0.08 },
-    { minIncome: 5800, maxIncome: 7500, baseRate: 197.50, taxRate: 0.11 },
-    { minIncome: 7500, maxIncome: 9200, baseRate: 384.50, taxRate: 0.135 },
-    { minIncome: 9200, maxIncome: 11000, baseRate: 612.70, taxRate: 0.16 },
-    { minIncome: 11000, maxIncome: Infinity, baseRate: 880.70, taxRate: 0.19 },
+    { minIncome: 3300, maxIncome: 4200, baseRate: 24.5, taxRate: 0.05 },
+    { minIncome: 4200, maxIncome: 5800, baseRate: 69.5, taxRate: 0.08 },
+    { minIncome: 5800, maxIncome: 7500, baseRate: 197.5, taxRate: 0.11 },
+    { minIncome: 7500, maxIncome: 9200, baseRate: 384.5, taxRate: 0.135 },
+    { minIncome: 9200, maxIncome: 11000, baseRate: 612.7, taxRate: 0.16 },
+    { minIncome: 11000, maxIncome: Infinity, baseRate: 880.7, taxRate: 0.19 },
   ],
 
   // Category F: Young Workers (Age < 21)
@@ -127,8 +127,8 @@ const TAX_SCHEDULE: TaxSchedule = {
     { minIncome: 4600, maxIncome: 6300, baseRate: 72, taxRate: 0.08 },
     { minIncome: 6300, maxIncome: 8200, baseRate: 208, taxRate: 0.11 },
     { minIncome: 8200, maxIncome: 10000, baseRate: 417, taxRate: 0.135 },
-    { minIncome: 10000, maxIncome: 12200, baseRate: 660.70, taxRate: 0.16 },
-    { minIncome: 12200, maxIncome: Infinity, baseRate: 992.70, taxRate: 0.19 },
+    { minIncome: 10000, maxIncome: 12200, baseRate: 660.7, taxRate: 0.16 },
+    { minIncome: 12200, maxIncome: Infinity, baseRate: 992.7, taxRate: 0.19 },
   ],
 
   // Category I: Non-Resident Employees
@@ -151,8 +151,8 @@ const TAX_SCHEDULE: TaxSchedule = {
     { minIncome: 4700, maxIncome: 6300, baseRate: 72, taxRate: 0.08 },
     { minIncome: 6300, maxIncome: 8100, baseRate: 205, taxRate: 0.11 },
     { minIncome: 8100, maxIncome: 9900, baseRate: 403, taxRate: 0.135 },
-    { minIncome: 9900, maxIncome: 12000, baseRate: 651.70, taxRate: 0.16 },
-    { minIncome: 12000, maxIncome: Infinity, baseRate: 969.70, taxRate: 0.19 },
+    { minIncome: 9900, maxIncome: 12000, baseRate: 651.7, taxRate: 0.16 },
+    { minIncome: 12000, maxIncome: Infinity, baseRate: 969.7, taxRate: 0.19 },
   ],
 };
 
@@ -210,10 +210,7 @@ function getTaxBracket(monthlyGross: number, category: string = 'B'): TaxBracket
 /**
  * Calculate monthly relief based on marital status and children
  */
-function calculateMonthlyRelief(
-  maritalStatus: string,
-  children: number
-): number {
+function calculateMonthlyRelief(maritalStatus: string, children: number): number {
   const basicRelief = BASIC_PERSONAL_RELIEF / 12;
 
   let maritalRelief = 0;

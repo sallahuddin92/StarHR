@@ -43,6 +43,17 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
   }
 }
 
-export function signAuthToken(payload: Omit<AuthTokenPayload, 'iat' | 'exp'>, expiresIn: string = '1h'): string {
+export function signAuthToken(
+  payload: Omit<AuthTokenPayload, 'iat' | 'exp'>,
+  expiresIn: string = '24h'
+): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] });
+}
+
+// Middleware to require HR Admin role
+export function requireHRAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  if (req.user?.role !== 'HR_ADMIN') {
+    return res.status(403).json({ error: 'Forbidden', message: 'HR Admin access required' });
+  }
+  return next();
 }

@@ -22,33 +22,33 @@ const {
 const pool = new Pool(
   DATABASE_URL
     ? {
-      connectionString: DATABASE_URL,
-      ssl:
-        process.env.NODE_ENV === 'production' || PGSSLMODE === 'require'
-          ? { rejectUnauthorized: false }
-          : false,
-      max: PGPOOL_MAX ? Number(PGPOOL_MAX) : 20,
-      idleTimeoutMillis: PGPOOL_IDLE ? Number(PGPOOL_IDLE) : 30_000,
-      connectionTimeoutMillis: PGPOOL_TIMEOUT ? Number(PGPOOL_TIMEOUT) : 2_000,
-    }
+        connectionString: DATABASE_URL,
+        ssl:
+          process.env.NODE_ENV === 'production' || PGSSLMODE === 'require'
+            ? { rejectUnauthorized: false }
+            : false,
+        max: PGPOOL_MAX ? Number(PGPOOL_MAX) : 20,
+        idleTimeoutMillis: PGPOOL_IDLE ? Number(PGPOOL_IDLE) : 30_000,
+        connectionTimeoutMillis: PGPOOL_TIMEOUT ? Number(PGPOOL_TIMEOUT) : 2_000,
+      }
     : {
-      host: PGHOST || 'localhost',
-      port: PGPORT ? Number(PGPORT) : 5432,
-      user: PGUSER || 'postgres',
-      password: PGPASSWORD || 'postgres123',
-      database: PGDATABASE || 'hr_portal',
-      ssl:
-        process.env.NODE_ENV === 'production' || PGSSLMODE === 'require'
-          ? { rejectUnauthorized: false }
-          : false,
-      max: PGPOOL_MAX ? Number(PGPOOL_MAX) : 20,
-      idleTimeoutMillis: PGPOOL_IDLE ? Number(PGPOOL_IDLE) : 30_000,
-      connectionTimeoutMillis: PGPOOL_TIMEOUT ? Number(PGPOOL_TIMEOUT) : 2_000,
-    }
+        host: PGHOST || 'localhost',
+        port: PGPORT ? Number(PGPORT) : 5432,
+        user: PGUSER || 'postgres',
+        password: PGPASSWORD || 'postgres123',
+        database: PGDATABASE || 'hr_portal',
+        ssl:
+          process.env.NODE_ENV === 'production' || PGSSLMODE === 'require'
+            ? { rejectUnauthorized: false }
+            : false,
+        max: PGPOOL_MAX ? Number(PGPOOL_MAX) : 20,
+        idleTimeoutMillis: PGPOOL_IDLE ? Number(PGPOOL_IDLE) : 30_000,
+        connectionTimeoutMillis: PGPOOL_TIMEOUT ? Number(PGPOOL_TIMEOUT) : 2_000,
+      }
 );
 
 // Pool error handler
-pool.on('error', (err) => {
+pool.on('error', err => {
   console.error('Unexpected error on idle client', err);
   process.exit(-1);
 });
@@ -56,10 +56,7 @@ pool.on('error', (err) => {
 /**
  * Execute a query with parameters
  */
-export async function query<T = any>(
-  text: string,
-  params?: any[]
-): Promise<QueryResult<T>> {
+export async function query<T = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
   const start = Date.now();
   try {
     const result = await pool.query<T>(text, params);
@@ -83,9 +80,7 @@ export async function getClient(): Promise<PoolClient> {
 /**
  * Execute a transaction with automatic rollback on error
  */
-export async function withTransaction<T>(
-  callback: (client: PoolClient) => Promise<T>
-): Promise<T> {
+export async function withTransaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await getClient();
   try {
     await client.query('BEGIN');

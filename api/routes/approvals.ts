@@ -76,7 +76,7 @@ approvalsRouter.get('/pending', async (req: Request, res: Response) => {
         al.created_at as "submittedAt",
         al.ot_approval_status as status,
         1 as "currentStep",
-        3 as "totalSteps",
+        1 as "totalSteps",  -- Manager approval is FINAL (no multi-step chain)
         al.attendance_date,
         al.raw_clock_in,
         al.raw_clock_out,
@@ -149,7 +149,7 @@ approvalsRouter.get('/:id', async (req: Request, res: Response) => {
         al.created_at as "submittedAt",
         al.ot_approval_status as status,
         1 as "currentStep",
-        3 as "totalSteps",
+        1 as "totalSteps",  -- Manager approval is FINAL
         al.attendance_date,
         al.raw_clock_in,
         al.raw_clock_out,
@@ -207,8 +207,19 @@ approvalsRouter.put('/:id/approve', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).user?.tenantId;
     const userId = (req as any).user?.id;
+    const userRole = (req as any).user?.role;
+
     if (!tenantId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    // Role check: Only managers, HR admins, or admins can approve OT
+    const allowedRoles = ['MANAGER', 'HR_ADMIN', 'ADMIN', 'HR_MANAGER'];
+    if (!allowedRoles.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: Only managers can approve OT requests',
+      });
     }
 
     const { id } = req.params;
@@ -224,7 +235,7 @@ approvalsRouter.put('/:id/approve', async (req: Request, res: Response) => {
 
     const { notes } = validation.data;
 
-    // Update the attendance record to approved
+    // Update the attendance record to approved - MANAGER APPROVAL IS FINAL
     const result = await query(
       `UPDATE attendance_ledger 
        SET ot_approval_status = 'approved',
@@ -233,7 +244,7 @@ approvalsRouter.put('/:id/approve', async (req: Request, res: Response) => {
            approval_notes = $2,
            updated_at = NOW()
        WHERE id = $3 AND tenant_id = $4 AND ot_approval_status = 'pending'
-       RETURNING id, ot_requested_hours, ot_approved_hours`,
+       RETURNING id, employee_id, ot_requested_hours, ot_approved_hours`,
       [userId, notes || null, id, tenantId]
     );
 
@@ -244,13 +255,19 @@ approvalsRouter.put('/:id/approve', async (req: Request, res: Response) => {
       });
     }
 
+    const approved = result.rows[0];
+
+    // Audit log for OT approval
+    console.warn(`[OT_AUDIT] APPROVED: attendance_id=${id}, employee_id=${approved.employee_id}, hours=${approved.ot_approved_hours}, approved_by=${userId}, timestamp=${new Date().toISOString()}`);
+
     return res.json({
       success: true,
-      message: 'Request approved successfully',
+      message: 'OT request approved by manager - automatically eligible for payroll calculation',
       data: {
         id,
         status: 'APPROVED',
-        approvedHours: result.rows[0].ot_approved_hours,
+        approvedHours: approved.ot_approved_hours,
+        approvedBy: userId,
       },
     });
   } catch (err) {
@@ -267,8 +284,19 @@ approvalsRouter.put('/:id/reject', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).user?.tenantId;
     const userId = (req as any).user?.id;
+    const userRole = (req as any).user?.role;
+
     if (!tenantId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    // Role check: Only managers, HR admins, or admins can reject OT
+    const allowedRoles = ['MANAGER', 'HR_ADMIN', 'ADMIN', 'HR_MANAGER'];
+    if (!allowedRoles.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: Only managers can reject OT requests',
+      });
     }
 
     const { id } = req.params;
@@ -284,7 +312,7 @@ approvalsRouter.put('/:id/reject', async (req: Request, res: Response) => {
 
     const { reason } = validation.data;
 
-    // Update the attendance record to rejected
+    // Update the attendance record to rejected - MANAGER DECISION IS FINAL
     const result = await query(
       `UPDATE attendance_ledger 
        SET ot_approval_status = 'rejected',
@@ -293,7 +321,7 @@ approvalsRouter.put('/:id/reject', async (req: Request, res: Response) => {
            approval_notes = $2,
            updated_at = NOW()
        WHERE id = $3 AND tenant_id = $4 AND ot_approval_status = 'pending'
-       RETURNING id`,
+       RETURNING id, employee_id, ot_requested_hours`,
       [userId, reason, id, tenantId]
     );
 
@@ -304,13 +332,19 @@ approvalsRouter.put('/:id/reject', async (req: Request, res: Response) => {
       });
     }
 
+    const rejected = result.rows[0];
+
+    // Audit log for OT rejection
+    console.warn(`[OT_AUDIT] REJECTED: attendance_id=${id}, employee_id=${rejected.employee_id}, requested_hours=${rejected.ot_requested_hours}, rejected_by=${userId}, reason="${reason}", timestamp=${new Date().toISOString()}`);
+
     return res.json({
       success: true,
-      message: 'Request rejected',
+      message: 'OT request rejected by manager',
       data: {
         id,
         status: 'REJECTED',
         reason,
+        rejectedBy: userId,
       },
     });
   } catch (err) {

@@ -8,13 +8,13 @@
 
 import { Router, Response } from 'express';
 import { query, withTransaction } from '../lib/db';
-import { 
-  EWARequestSchema, 
+import {
+  EWARequestSchema,
   EWARequestInput,
   EWAApproveSchema,
   EWARejectSchema,
-  validateRequest, 
-  formatZodErrors 
+  validateRequest,
+  formatZodErrors,
 } from '../lib/validation';
 import { AuthenticatedRequest } from '../middleware/auth';
 
@@ -25,7 +25,7 @@ export const ewaRouter = Router();
 // ============================================================================
 
 /** Safe limit percentage of accrued salary (50%) */
-const SAFE_LIMIT_PERCENTAGE = 0.50;
+const SAFE_LIMIT_PERCENTAGE = 0.5;
 
 /** Maximum EWA requests per month */
 const MAX_MONTHLY_REQUESTS = 4;
@@ -80,9 +80,9 @@ interface EWARequestResponse {
 
 /**
  * EWA Request Endpoint
- * 
+ *
  * Accepts: { employeeId, amount }
- * 
+ *
  * Logic:
  * 1. Calculate AccruedSalary = DailyRate * DaysWorked
  * 2. Check SafeLimit = AccruedSalary * 0.50
@@ -95,7 +95,7 @@ ewaRouter.post('/request', async (req: Request, res: Response) => {
     // Step 1: Validate Input with Zod
     // ========================================================================
     const validation = validateRequest(EWARequestSchema, req.body);
-    
+
     if (!validation.success) {
       return res.status(400).json({
         success: false,
@@ -270,7 +270,6 @@ ewaRouter.post('/request', async (req: Request, res: Response) => {
     };
 
     return res.status(201).json(response);
-
   } catch (error) {
     console.error('EWA request error:', error);
     return res.status(500).json({
@@ -367,7 +366,6 @@ ewaRouter.get('/balance/:employeeId', async (req: Request, res: Response) => {
         isEligible: availableBalance > 0 && requestCount < MAX_MONTHLY_REQUESTS,
       },
     });
-
   } catch (error) {
     console.error('Get EWA balance error:', error);
     return res.status(500).json({
@@ -405,7 +403,6 @@ ewaRouter.get('/history/:employeeId', async (req: Request, res: Response) => {
       data: result.rows,
       count: result.rowCount,
     });
-
   } catch (error) {
     console.error('Get EWA history error:', error);
     return res.status(500).json({
@@ -425,7 +422,7 @@ ewaRouter.get('/history/:employeeId', async (req: Request, res: Response) => {
 ewaRouter.get('/pending', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+
     if (!tenantId) {
       return res.status(401).json({
         success: false,
@@ -498,7 +495,6 @@ ewaRouter.get('/pending', async (req: AuthenticatedRequest, res: Response) => {
       data: pendingRequests,
       count: result.rowCount,
     });
-
   } catch (error) {
     console.error('Get pending EWA requests error:', error);
     return res.status(500).json({
@@ -575,7 +571,6 @@ ewaRouter.put('/:id/approve', async (req: AuthenticatedRequest, res: Response) =
         approvedAt: new Date().toISOString(),
       },
     });
-
   } catch (error) {
     console.error('Approve EWA request error:', error);
     return res.status(500).json({
@@ -659,7 +654,6 @@ ewaRouter.put('/:id/reject', async (req: AuthenticatedRequest, res: Response) =>
         rejectedAt: new Date().toISOString(),
       },
     });
-
   } catch (error) {
     console.error('Reject EWA request error:', error);
     return res.status(500).json({

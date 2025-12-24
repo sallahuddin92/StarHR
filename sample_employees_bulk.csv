@@ -1,0 +1,51 @@
+Employee_Code,Full_Name,Email,Phone,Department,Designation,Date_of_Joining,Date_of_Birth,Gender,Employment_Type,Status
+EMP001,Ahmad Ibrahim,ahmad.ibrahim@starhr.com,+60123456001,IT,Chief Technology Officer,2020-01-15,1975-03-12,Male,PERMANENT,ACTIVE
+EMP002,Nurul Huda,nurul.huda@starhr.com,+60123456002,HR,HR Director,2020-02-01,1980-07-22,Female,PERMANENT,ACTIVE
+EMP003,Mohd Faiz,mohd.faiz@starhr.com,+60123456003,Finance,Finance Director,2020-01-20,1978-11-05,Male,PERMANENT,ACTIVE
+EMP004,Siti Aminah,siti.aminah@starhr.com,+60123456004,Operations,Operations Director,2020-03-10,1982-04-18,Female,PERMANENT,ACTIVE
+EMP005,Lee Wei Ming,lee.weiming@starhr.com,+60123456005,Sales,Sales Director,2020-04-01,1979-09-30,Male,PERMANENT,ACTIVE
+EMP006,Tan Mei Ling,tan.meiling@starhr.com,+60123456006,IT,Engineering Manager,2021-01-10,1985-06-14,Female,PERMANENT,ACTIVE
+EMP007,Raj Kumar,raj.kumar@starhr.com,+60123456007,IT,DevOps Manager,2021-02-15,1987-01-25,Male,PERMANENT,ACTIVE
+EMP008,Amirah Yusof,amirah.yusof@starhr.com,+60123456008,HR,HR Manager,2021-03-01,1988-08-08,Female,PERMANENT,ACTIVE
+EMP009,Wong Chee Keong,wong.cheekeong@starhr.com,+60123456009,Finance,Finance Manager,2021-04-10,1986-12-03,Male,PERMANENT,ACTIVE
+EMP010,Fatimah Zahra,fatimah.zahra@starhr.com,+60123456010,Operations,Operations Manager,2021-05-01,1989-02-20,Female,PERMANENT,ACTIVE
+EMP011,David Lim,david.lim@starhr.com,+60123456011,Sales,Sales Manager,2021-06-15,1990-05-17,Male,PERMANENT,ACTIVE
+EMP012,Hafizah Rahman,hafizah.rahman@starhr.com,+60123456012,IT,Senior Software Engineer,2022-01-05,1992-03-28,Female,PERMANENT,ACTIVE
+EMP013,Muhammad Aziz,muhammad.aziz@starhr.com,+60123456013,IT,Senior Software Engineer,2022-01-10,1991-07-11,Male,PERMANENT,ACTIVE
+EMP014,Chen Wei Lin,chen.weilin@starhr.com,+60123456014,IT,DevOps Engineer,2022-02-01,1993-10-06,Male,PERMANENT,ACTIVE
+EMP015,Priya Devi,priya.devi@starhr.com,+60123456015,IT,QA Lead,2022-02-15,1990-04-22,Female,PERMANENT,ACTIVE
+EMP016,Zulkifli Hassan,zulkifli.hassan@starhr.com,+60123456016,HR,HR Executive,2022-03-01,1994-08-15,Male,PERMANENT,ACTIVE
+EMP017,Ng Siew Mei,ng.siewmei@starhr.com,+60123456017,HR,Recruitment Specialist,2022-03-15,1995-01-09,Female,PERMANENT,ACTIVE
+EMP018,Kamal Ariffin,kamal.ariffin@starhr.com,+60123456018,Finance,Senior Accountant,2022-04-01,1991-11-28,Male,PERMANENT,ACTIVE
+EMP019,Syafiqah Omar,syafiqah.omar@starhr.com,+60123456019,Finance,Accountant,2022-04-15,1996-06-13,Female,PERMANENT,ACTIVE
+EMP020,Loh Kean Yew,loh.keanyew@starhr.com,+60123456020,Operations,Logistics Supervisor,2022-05-01,1992-09-04,Male,PERMANENT,ACTIVE
+EMP021,Norashikin Ismail,norashikin.ismail@starhr.com,+60123456021,Operations,Quality Control,2022-05-15,1993-12-21,Female,PERMANENT,ACTIVE
+EMP022,Vincent Tan,vincent.tan@starhr.com,+60123456022,Sales,Senior Sales Executive,2022-06-01,1994-02-17,Male,PERMANENT,ACTIVE
+EMP023,Aishah Binti Ali,aishah.ali@starhr.com,+60123456023,Sales,Sales Executive,2022-06-15,1997-05-08,Female,PERMANENT,ACTIVE
+EMP024,Jason Ong,jason.ong@starhr.com,+60123456024,IT,Software Engineer,2023-01-02,1995-08-24,Male,PERMANENT,ACTIVE
+EMP025,Nur Aisyah,nur.aisyah@starhr.com,+60123456025,IT,Software Engineer,2023-01-09,1996-11-16,Female,PERMANENT,ACTIVE
+EMP026,Kumar Rajan,kumar.rajan@starhr.com,+60123456026,IT,Software Engineer,2023-01-16,1997-03-07,Male,PERMANENT,ACTIVE
+EMP027,Lim Hui Ying,lim.huiying@starhr.com,+60123456027,IT,Junior Developer,2023-02-01,1998-07-19,Female,PERMANENT,ACTIVE
+EMP028,Haziq Nizam,haziq.nizam@starhr.com,+60123456028,IT,Junior Developer,2023-02-15,1999-10-30,Male,PERMANENT,ACTIVE
+EMP029,Sarah Abdullah,sarah.abdullah@starhr.com,+60123456029,IT,QA Engineer,2023-03-01,1996-04-12,Female,PERMANENT,ACTIVE
+EMP030,Alvin Chong,alvin.chong@starhr.com,+60123456030,IT,QA Engineer,2023-03-15,1997-08-25,Male,PERMANENT,ACTIVE
+EMP031,Nabila Harun,nabila.harun@starhr.com,+60123456031,HR,HR Assistant,2023-04-01,1998-01-06,Female,PERMANENT,ACTIVE
+EMP032,Rizal Mansor,rizal.mansor@starhr.com,+60123456032,HR,Training Coordinator,2023-04-15,1997-06-18,Male,PERMANENT,ACTIVE
+EMP033,Emily Wong,emily.wong@starhr.com,+60123456033,Finance,Junior Accountant,2023-05-01,1999-09-02,Female,PERMANENT,ACTIVE
+EMP034,Hafiz Jamaludin,hafiz.jamaludin@starhr.com,+60123456034,Finance,Accounts Clerk,2023-05-15,2000-12-14,Male,PERMANENT,ACTIVE
+EMP035,Mei Fen Koh,meifen.koh@starhr.com,+60123456035,Operations,Warehouse Executive,2023-06-01,1996-02-27,Female,PERMANENT,ACTIVE
+EMP036,Azlan Shah,azlan.shah@starhr.com,+60123456036,Operations,Warehouse Assistant,2023-06-15,1998-05-09,Male,PERMANENT,ACTIVE
+EMP037,Jessica Lau,jessica.lau@starhr.com,+60123456037,Sales,Sales Associate,2023-07-01,1999-08-21,Female,PERMANENT,ACTIVE
+EMP038,Imran Hussain,imran.hussain@starhr.com,+60123456038,Sales,Sales Associate,2023-07-15,1998-11-03,Male,PERMANENT,ACTIVE
+EMP039,Chong Wei Jie,chong.weijie@starhr.com,+60123456039,IT,Intern - Development,2024-01-02,2001-03-16,Male,CONTRACT,ACTIVE
+EMP040,Anis Sofea,anis.sofea@starhr.com,+60123456040,IT,Intern - Development,2024-01-09,2002-06-28,Female,CONTRACT,ACTIVE
+EMP041,Daniel Foo,daniel.foo@starhr.com,+60123456041,IT,Intern - QA,2024-01-16,2001-09-10,Male,CONTRACT,ACTIVE
+EMP042,Nurul Ain,nurul.ain@starhr.com,+60123456042,HR,Intern - HR,2024-02-01,2002-12-22,Female,CONTRACT,ACTIVE
+EMP043,Marcus Lee,marcus.lee@starhr.com,+60123456043,Finance,Intern - Finance,2024-02-15,2001-04-05,Male,CONTRACT,ACTIVE
+EMP044,Aina Mardhiah,aina.mardhiah@starhr.com,+60123456044,Operations,Intern - Operations,2024-03-01,2002-07-17,Female,CONTRACT,ACTIVE
+EMP045,Bryan Tan,bryan.tan@starhr.com,+60123456045,Sales,Intern - Sales,2024-03-15,2001-10-29,Male,CONTRACT,ACTIVE
+EMP046,Farah Izzati,farah.izzati@starhr.com,+60123456046,IT,Contract Developer,2024-04-01,1995-01-11,Female,CONTRACT,ACTIVE
+EMP047,Kevin Ng,kevin.ng@starhr.com,+60123456047,IT,Contract Developer,2024-04-15,1994-04-23,Male,CONTRACT,ACTIVE
+EMP048,Aisyah Roslan,aisyah.roslan@starhr.com,+60123456048,HR,Part-time HR,2024-05-01,1997-07-05,Female,PART_TIME,ACTIVE
+EMP049,Samuel Wong,samuel.wong@starhr.com,+60123456049,Finance,Part-time Accountant,2024-05-15,1996-10-17,Male,PART_TIME,ACTIVE
+EMP050,Zara Ismail,zara.ismail@starhr.com,+60123456050,Operations,Part-time Coordinator,2024-06-01,1998-02-08,Female,PART_TIME,ACTIVE

@@ -48,13 +48,13 @@ async function clockIn(token: string, workerId: string, deviceId: string): Promi
   // 7:00 AM Malaysia = 23:00 UTC (previous day)
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0); // Start of today in UTC
-  
+
   // 7:00 AM in Malaysia (UTC+8) = 23:00 UTC previous day
   // So we need: today's date at 23:00 UTC - 24 hours = yesterday 23:00 UTC
   // Or simpler: today at -1:00 UTC = yesterday 23:00 UTC
   // Actually: 7 AM MYT = 7 - 8 = -1 UTC = 23:00 previous day
   const sevenAmMalaysiaInUTC = new Date(today.getTime() - 1 * 60 * 60 * 1000); // -1 hour from midnight = 23:00 yesterday
-  
+
   // Random offset between -15 and +15 minutes to simulate realistic clock-in times
   const offsetMinutes = Math.floor(Math.random() * 31) - 15;
   const clockTime = new Date(sevenAmMalaysiaInUTC.getTime() + offsetMinutes * 60 * 1000);
@@ -110,13 +110,15 @@ async function main() {
     const limit = Math.min(employees.length, 50);
     console.log(`⏰ Simulating morning clock-in for ${limit} workers...\n`);
 
-    const deviceId = `TERMINAL-${Math.floor(Math.random() * 100).toString().padStart(3, '0')}`;
+    const deviceId = `TERMINAL-${Math.floor(Math.random() * 100)
+      .toString()
+      .padStart(3, '0')}`;
 
     for (let i = 0; i < limit; i++) {
       const emp = employees[i];
       await clockIn(token, emp.id, deviceId);
       // Small delay between requests
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 100));
     }
 
     console.log('\n✅ Simulation complete!');

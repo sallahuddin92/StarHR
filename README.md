@@ -9,6 +9,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Tests](https://img.shields.io/badge/Tests-60%2B_Passing-32CD32?logo=jest&logoColor=white)](#-testing)
 
 </div>
 
@@ -21,6 +22,7 @@
 - [Architecture](#-architecture)
 - [Tech Stack](#-tech-stack)
 - [Getting Started](#-getting-started)
+- [Testing](#-testing)
 - [Project Structure](#-project-structure)
 - [API Documentation](#-api-documentation)
 - [Database Schema](#-database-schema)
@@ -40,18 +42,21 @@
 ## ✨ Features
 
 ### 👥 Employee Management
+
 - Employee master data with department/designation hierarchy
 - Bulk import via CSV/Excel
 - Active/inactive status tracking
 - Employee profile management
 
 ### ⏰ Attendance & Time Tracking
+
 - Clock-in/Clock-out with GPS tracking
 - Double-punch detection (5-minute debounce)
 - Overtime calculation and verification
 - Attendance intervention and audit
 
 ### 💰 Payroll Processing
+
 - Monthly payroll cycle configuration
 - Overtime pay calculation
 - Statutory deductions (EPF, SOCSO, EIS, PCB)
@@ -59,18 +64,21 @@
 - Payslip generation and distribution
 
 ### ✅ Approval Workflows
+
 - OT request approvals
 - Multi-step approval chain
 - Batch approve/reject functionality
 - Approval history tracking
 
 ### 📄 Document Center
+
 - Payslip batch generation
 - EA Form generation for tax filing
 - WhatsApp broadcast integration
 - Document history logs
 
 ### 🔐 Security
+
 - JWT-based authentication
 - Role-based access control
 - Rate limiting
@@ -140,16 +148,16 @@
 
 ## 🛠 Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| **Frontend** | React 19, TypeScript 5.8, Vite 6, Tailwind CSS 3 |
-| **Backend** | Node.js 20, Express.js 4, TypeScript |
-| **Database** | PostgreSQL 16 |
-| **Authentication** | JWT (jsonwebtoken) |
-| **Validation** | Zod |
-| **Security** | Helmet, CORS, Rate Limiting, HPP |
-| **DevOps** | Docker, Docker Compose |
-| **Dev Tools** | TSX (TypeScript Execute), Vite HMR |
+| Layer              | Technology                                       |
+| ------------------ | ------------------------------------------------ |
+| **Frontend**       | React 19, TypeScript 5.8, Vite 6, Tailwind CSS 3 |
+| **Backend**        | Node.js 20, Express.js 4, TypeScript             |
+| **Database**       | PostgreSQL 16                                    |
+| **Authentication** | JWT (jsonwebtoken)                               |
+| **Validation**     | Zod                                              |
+| **Security**       | Helmet, CORS, Rate Limiting, HPP                 |
+| **DevOps**         | Docker, Docker Compose                           |
+| **Dev Tools**      | TSX (TypeScript Execute), Vite HMR               |
 
 ---
 
@@ -176,6 +184,7 @@ docker-compose logs -f
 ```
 
 **Services will be available at:**
+
 - Frontend: http://localhost:3000
 - API: http://localhost:3001
 - Database: localhost:5432
@@ -203,10 +212,69 @@ npm run dev
 
 ### Default Login Credentials
 
-| Field | Value |
-|-------|-------|
-| Username | `EMP-001` |
+| Field    | Value         |
+| -------- | ------------- |
+| Username | `EMP-001`     |
 | Password | `password123` |
+
+---
+
+## 🧪 Testing
+
+StarHR includes comprehensive automated test coverage using Jest, Vitest, and Playwright.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run backend API tests only
+npm run test:api
+
+# Run frontend tests only
+npm run test:ui
+
+# Run end-to-end tests
+npm run test:e2e
+
+# Run with coverage report
+npm run test:coverage
+
+# Watch mode (for development)
+npm run test:api:watch
+npm run test:ui:watch
+```
+
+### Test Categories
+
+| Type                  | Framework        | Location                | Coverage         |
+| --------------------- | ---------------- | ----------------------- | ---------------- |
+| **Unit Tests**        | Jest             | `api/__tests__/utils/`  | Business logic   |
+| **Integration Tests** | Jest + Supertest | `api/__tests__/routes/` | API endpoints    |
+| **Frontend Tests**    | Vitest           | `src/**/*.test.tsx`     | React components |
+| **E2E Tests**         | Playwright       | `e2e/`                  | User workflows   |
+
+### Coverage Target
+
+- **80% minimum** code coverage for critical modules
+- Leave calculations, payroll, attendance, validation utilities
+
+### Test Files
+
+```
+api/__tests__/
+├── routes/
+│   ├── auth.test.ts          # Authentication tests
+│   └── attendance.test.ts    # Attendance API tests
+├── utils/
+│   ├── leave-calculations.test.ts   # Leave entitlement (16 tests)
+│   ├── payroll-calculations.test.ts # Payroll & EPF (17 tests)
+│   └── validation.test.ts           # Input validation (26 tests)
+├── globalSetup.ts
+├── globalTeardown.ts
+└── setup.ts
+```
 
 ---
 
@@ -262,11 +330,12 @@ enterprise-hr-portal/
 
 ### Authentication
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/auth/login` | POST | Login with credentials |
+| Endpoint          | Method | Description            |
+| ----------------- | ------ | ---------------------- |
+| `/api/auth/login` | POST   | Login with credentials |
 
 **Request:**
+
 ```json
 {
   "identifier": "EMP-001",
@@ -275,6 +344,7 @@ enterprise-hr-portal/
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -290,42 +360,42 @@ enterprise-hr-portal/
 
 ### Employees
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/employees` | GET | List all employees |
-| `/api/employees` | POST | Create employee |
-| `/api/employees/:id` | PUT | Update employee |
+| Endpoint             | Method | Description        |
+| -------------------- | ------ | ------------------ |
+| `/api/employees`     | GET    | List all employees |
+| `/api/employees`     | POST   | Create employee    |
+| `/api/employees/:id` | PUT    | Update employee    |
 
 ### Attendance
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/attendance` | GET | List attendance records |
-| `/api/attendance/clock-in` | POST | Record clock-in |
-| `/api/attendance/:id/approve-ot` | PUT | Approve OT hours |
-| `/api/attendance/status/:workerId` | GET | Get attendance status |
+| Endpoint                           | Method | Description             |
+| ---------------------------------- | ------ | ----------------------- |
+| `/api/attendance`                  | GET    | List attendance records |
+| `/api/attendance/clock-in`         | POST   | Record clock-in         |
+| `/api/attendance/:id/approve-ot`   | PUT    | Approve OT hours        |
+| `/api/attendance/status/:workerId` | GET    | Get attendance status   |
 
 ### Approvals
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/approvals/pending` | GET | List pending approvals |
-| `/api/approvals/:id` | GET | Get approval details |
-| `/api/approvals/:id/approve` | PUT | Approve request |
-| `/api/approvals/:id/reject` | PUT | Reject request |
+| Endpoint                     | Method | Description            |
+| ---------------------------- | ------ | ---------------------- |
+| `/api/approvals/pending`     | GET    | List pending approvals |
+| `/api/approvals/:id`         | GET    | Get approval details   |
+| `/api/approvals/:id/approve` | PUT    | Approve request        |
+| `/api/approvals/:id/reject`  | PUT    | Reject request         |
 
 ### Payroll
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/payroll/run-draft` | POST | Generate draft payroll |
-| `/api/payroll/history` | GET | Get payroll history |
+| Endpoint                 | Method | Description            |
+| ------------------------ | ------ | ---------------------- |
+| `/api/payroll/run-draft` | POST   | Generate draft payroll |
+| `/api/payroll/history`   | GET    | Get payroll history    |
 
 ### Dashboard Stats
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/stats/summary` | GET | Get dashboard summary |
+| Endpoint             | Method | Description           |
+| -------------------- | ------ | --------------------- |
+| `/api/stats/summary` | GET    | Get dashboard summary |
 
 ---
 
@@ -376,14 +446,14 @@ payroll_details (
 
 ## 🖥 Screens & Modules
 
-| Screen | Path | Description |
-|--------|------|-------------|
-| **Dashboard** | `/` | Overview with stats, pending actions, recent activities |
-| **Attendance Intervention** | `/attendance` | Audit clock-in/out, verify OT, batch approve |
-| **Payroll Cockpit** | `/payroll` | Configure payroll cycle, generate draft ledger |
-| **Pending Approvals** | `/approvals` | Review and action OT/leave requests |
-| **Document Center** | `/documents` | Generate payslips, EA forms, broadcast to WhatsApp |
-| **Employee Master** | `/employees` | Manage employee data, bulk import |
+| Screen                      | Path          | Description                                             |
+| --------------------------- | ------------- | ------------------------------------------------------- |
+| **Dashboard**               | `/`           | Overview with stats, pending actions, recent activities |
+| **Attendance Intervention** | `/attendance` | Audit clock-in/out, verify OT, batch approve            |
+| **Payroll Cockpit**         | `/payroll`    | Configure payroll cycle, generate draft ledger          |
+| **Pending Approvals**       | `/approvals`  | Review and action OT/leave requests                     |
+| **Document Center**         | `/documents`  | Generate payslips, EA forms, broadcast to WhatsApp      |
+| **Employee Master**         | `/employees`  | Manage employee data, bulk import                       |
 
 ---
 
@@ -411,11 +481,11 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 
 ### Services
 
-| Service | Container Name | Port | Description |
-|---------|---------------|------|-------------|
-| `postgres` | hr-portal-db | 5432 | PostgreSQL database |
-| `api` | hr-portal-api | 3001 | Express API server |
-| `frontend` | hr-portal-frontend | 3000 | Vite dev server |
+| Service    | Container Name     | Port | Description         |
+| ---------- | ------------------ | ---- | ------------------- |
+| `postgres` | hr-portal-db       | 5432 | PostgreSQL database |
+| `api`      | hr-portal-api      | 3001 | Express API server  |
+| `frontend` | hr-portal-frontend | 3000 | Vite dev server     |
 
 ### Commands
 
@@ -435,6 +505,65 @@ docker-compose down
 # Reset database (caution: deletes all data)
 docker-compose down -v
 docker-compose up -d
+```
+
+---
+
+## ❓ FAQ
+
+### General
+
+**Q: What is StarHR?**
+A: StarHR is a comprehensive HR management system designed for Malaysian businesses, with built-in statutory compliance for EPF, SOCSO, EIS, and PCB.
+
+**Q: Is StarHR multi-tenant?**
+A: Yes, StarHR supports multiple companies/tenants with isolated data.
+
+### Setup & Development
+
+**Q: How do I reset the database?**
+
+```bash
+docker-compose down -v
+docker-compose up -d
+```
+
+**Q: How do I run database migrations?**
+
+```bash
+psql -U postgres -d hr_portal -f migrations/XXX_migration.sql
+```
+
+**Q: Tests are failing, what should I check?**
+
+1. Database is running: `docker-compose ps`
+2. Dependencies installed: `npm install`
+3. Environment variables set: check `.env`
+
+### Payroll & Compliance
+
+**Q: Are the EPF/SOCSO rates up to date?**
+A: Rates are updated as of December 2024. See [Statutory Guide](docs/STATUTORY_GUIDE.md).
+
+**Q: How is PCB calculated?**
+A: PCB uses the progressive tax brackets from LHDN. The system provides estimates only.
+
+### Troubleshooting
+
+**Q: API returns 401 Unauthorized**
+A: Check your JWT token is valid and not expired. Re-login if needed.
+
+**Q: Port 3001 already in use**
+
+```bash
+lsof -ti:3001 | xargs kill -9
+```
+
+**Q: Docker container won't start**
+
+```bash
+docker-compose logs <service-name>
+docker-compose build --no-cache <service-name>
 ```
 
 ---

@@ -5,12 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { query } from '../lib/db';
-import {
-  ClockInSchema,
-  ClockInRequest,
-  validateRequest,
-  formatZodErrors
-} from '../lib/validation';
+import { ClockInSchema, ClockInRequest, validateRequest, formatZodErrors } from '../lib/validation';
 
 export const attendanceRouter = Router();
 
@@ -104,10 +99,10 @@ attendanceRouter.get('/', async (req: Request, res: Response) => {
 
 /**
  * Clock-In Endpoint
- * 
+ *
  * Accepts: { workerId, timestamp, gps, deviceId }
  * Inserts a record into attendance_ledger
- * 
+ *
  * CRUCIAL: Implements 'Double Punch' detection (debounce within 5 minutes)
  */
 attendanceRouter.post('/clock-in', async (req: Request, res: Response) => {
@@ -152,7 +147,9 @@ attendanceRouter.post('/clock-in', async (req: Request, res: Response) => {
     // ========================================================================
     // Step 3: Double Punch Detection (5-minute debounce)
     // ========================================================================
-    const debounceWindowStart = new Date(clockInTime.getTime() - DOUBLE_PUNCH_DEBOUNCE_MINUTES * 60 * 1000);
+    const debounceWindowStart = new Date(
+      clockInTime.getTime() - DOUBLE_PUNCH_DEBOUNCE_MINUTES * 60 * 1000
+    );
 
     const recentPunchResult = await query<AttendanceRecord>(
       `SELECT id, raw_clock_in, raw_clock_out 
@@ -288,7 +285,6 @@ attendanceRouter.post('/clock-in', async (req: Request, res: Response) => {
     };
 
     return res.status(isNewEntry ? 201 : 200).json(response);
-
   } catch (error) {
     console.error('Clock-in error:', error);
     return res.status(500).json({
@@ -343,7 +339,6 @@ attendanceRouter.get('/status/:workerId', async (req: Request, res: Response) =>
         totalShifts: result.rowCount,
       },
     });
-
   } catch (error) {
     console.error('Status check error:', error);
     return res.status(500).json({
@@ -411,7 +406,6 @@ attendanceRouter.put('/:id/approve-ot', async (req: Request, res: Response) => {
         status: updated.ot_approval_status,
       },
     });
-
   } catch (error) {
     console.error('Approve OT error:', error);
     return res.status(500).json({
@@ -529,7 +523,6 @@ attendanceRouter.put('/:id/fix-missing-punch', async (req: Request, res: Respons
         isManualEntry: updated.is_manual_entry,
       },
     });
-
   } catch (error) {
     console.error('Fix missing punch error:', error);
     return res.status(500).json({

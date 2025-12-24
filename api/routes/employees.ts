@@ -14,7 +14,10 @@ const CreateEmployeeSchema = z.object({
   department: z.string().optional(),
   designation: z.string().optional(),
   employmentType: z.string().optional(),
-  dateOfJoining: z.string().regex(/\d{4}-\d{2}-\d{2}/, 'YYYY-MM-DD format expected').optional(),
+  dateOfJoining: z
+    .string()
+    .regex(/\d{4}-\d{2}-\d{2}/, 'YYYY-MM-DD format expected')
+    .optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -49,7 +52,9 @@ employeesRouter.post('/', async (req: AuthenticatedRequest, res: Response) => {
 
     const parsed = CreateEmployeeSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Validation Error', details: formatZodErrors(parsed.error.errors) });
+      return res
+        .status(400)
+        .json({ error: 'Validation Error', details: formatZodErrors(parsed.error.errors) });
     }
 
     const {
@@ -70,7 +75,18 @@ employeesRouter.post('/', async (req: AuthenticatedRequest, res: Response) => {
           tenant_id, employee_id, full_name, email, phone_number, department, designation, employment_type, date_of_joining, is_active
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING id`,
-        [tenantId, employeeId, fullName, email, phoneNumber, department, designation, employmentType, dateOfJoining, isActive]
+        [
+          tenantId,
+          employeeId,
+          fullName,
+          email,
+          phoneNumber,
+          department,
+          designation,
+          employmentType,
+          dateOfJoining,
+          isActive,
+        ]
       );
 
       return res.status(201).json({ success: true, data: { id: insert.rows[0].id } });
@@ -96,7 +112,9 @@ employeesRouter.put('/:id', async (req: AuthenticatedRequest, res: Response) => 
     const employeeId = req.params.id;
     const parsed = UpdateEmployeeSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Validation Error', details: formatZodErrors(parsed.error.errors) });
+      return res
+        .status(400)
+        .json({ error: 'Validation Error', details: formatZodErrors(parsed.error.errors) });
     }
 
     const updates: string[] = [];
